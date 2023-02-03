@@ -1,0 +1,741 @@
+---
+title: "Yampa"
+author: "Brian"
+date: "2/2/2023"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+NOTES FROM SF: 
+
+FOR STEAMBOAT, COMPARE THE DETRENDED CLIAMTE NORMAL CURVES AGAINST EACH OTHER
+
+Derry & fassnacht 2010 Compare climatology of snotel statuions= they don't have the same climatol9ogy based on the snow data
+
+Figure 5b - https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2009WR007835
+
+# Disclaimer 
+
+*This work is very preliminary as I get back into the coding swing of things. Data wrangling and figure generation will be done via R, but the rest of the project will be done using good ol' microsoft products. This is just an entry point into data crunching and should by no means be considered a final product.*
+
+*Also, I'm not great at this but whatever. I could automate this, but I'll figure that out shortly!*
+
+**Need to update figures & analyze sites for seasonal trends**
+
+# Methodology
+
+SNOTEL data was provided by the NRCS. Data was cleaned by removing outliers that are likely implausible; any year with more than 15 observations missing was removed. Temperatures were adjusted using the Morrisey method for stations identified by Ma et al (2019) due to SNOTEL temperature sensor changes, with the adjustment applied to pre-sensor change data. Daily mean observations were detrended to determine whether values were increasing or decreasing from the entire time series trend. Daily mean temperatures were first averaged by water year, with all water year means then averaged by day of water year. The mean temperature by day for the period of record was averaged. To find the standard deviation, the daily mean temperatures by water year was subtracted from the averaged mean temperature by day for the period of record. All water year means averaged by day of water year were subtracted from the temperature mean. The resulting values were then added together to find the “residual” of the daily mean temperatures by water year. The standard deviation was then computed from those residuals, with trends analyzed by Mann‐Kendall significance test and Theil‐Sen's rate of change. Significant trends are identified with p-values of less than 0.10.
+
+Morrisey Method
+
+The Morrisey Method is taken from [Ma, Fassnacht and Kampf.](https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2019WR025921). 
+
+In R script: T(adjusted) = 5.3x10^(-7)xT(old)^4+3.72x10^(-5)xT(old)^3-2.16x10^(-3)xT(old)^2-7.32x10^(-2)xT(old)+1.37
+
+**In the Ma et al. spreadsheet, H1 is Morrisey, H2 is Oiler**
+
+```{r libraries, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(snotelr)
+library(riem)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(dataRetrieval)
+library(lubridate)
+library(sf)
+library(ggthemes)
+library(xts)
+library(dygraphs)
+library(scales)
+library(openair)
+library(plotly)
+library(SciViews)
+knitr::opts_chunk$set(message = F, 
+                      warning = F,
+                      cache = T)
+knitr::opts_chunk$set(echo = TRUE)
+library(trend)
+library(nhdplusTools)
+#library(lfstat) No longer supported?
+library(ggpubr)
+library(kableExtra)
+
+#Stats
+library(forcats)
+library(stringr)
+library(trend)
+
+# COOP/ Did not work- seems to be limited to coastal areas
+#library(rnoaa)
+```
+
+Yampa Area SNOTEL sites:
+
+Burro Mountain	378 *NSCE- Original, Bias- Morrisey* 7/11/2002 (NSCE- 0.87 vs 0.84)
+
+Columbine 408 *Morrisey* 7/22/2005
+
+Columbine Pass	409 *Morrisey* 6/23/2005
+
+Crosho	426 *Morrisey* 7/21/2005
+
+Dry Lake	457 *Oyler -> Morrisey* 7/30/2003
+
+Elk River	467 *Oyler -> Morrisey* 8/7/2006
+
+Lynx Pass	607 *Morrisey* 5/22/2006
+
+Rabbit Ears	709 *Morrisey* 8/7/2006
+
+Ripple Creek	717 *Oyler -> Morrisey* 8/7/2006
+
+Tower	825 *Original* 8/18/2004
+
+Trapper Lake	827 *Original* 12/13/2004
+
+## Data from thesis research:
+
+```{read in Yampa area SNOTELr,eval=FALSE, include=TRUE}
+
+SNOTEL_yampa_area <- snotel_download(site_id = c(378, 408, 409, 426, 457, 467, 607, 709, 717, 825, 827), path = tempdir('../data'), internal = TRUE)
+
+write.csv(SNOTEL_yampa_area,"C:/Users/13074/Documents/ESS580/thesis_project/Yampa/data_raw/snotel_yampa.csv", row.names = FALSE) #write in the raw data
+
+```
+
+```{r yampa read in}
+
+SNOTEL_yampa_area <- read.csv("C:/Users/13074/Documents/ESS580/thesis_project/Yampa/data_raw/snotel_yampa.csv", header = TRUE)
+
+```
+
+
+# Burro Mountain	378 
+*NSCE- Original, Bias- Morrisey* 7/11/2002
+
+```{r filter (378) station}
+
+snotel_378 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "378")
+
+```
+
+```{r 378 clean & water year & day }
+#str(snotel_378) # check the date, usually a character.  
+
+snotel_378$Date <- as.Date(snotel_378$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_378_clean <- snotel_378 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_378_clean <- snotel_378_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 378 plot check }
+
+# Check for outliers
+
+ggplot(snotel_378_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 378 trying to clean outliers}
+
+
+
+snotel_378_clean <- snotel_378_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40)# %>% 
+  #filter(temperature_mean < 25)
+
+```
+
+
+```{r 378 temp difference}
+
+ggplot(snotel_378_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 378 cull selection}
+
+# filtering for temperature anomalies
+#snotel_378_cull_count <- snotel_378_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_378_cull_count
+
+# filtering for too few observations in a year
+snotel_378_cull_count_days <- snotel_378_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_378_cull_count_days
+
+```
+
+```{r 378 cull}
+
+snotel_378_clean_culled <- snotel_378_clean %>% 
+  filter(waterYear != "1985" & waterYear != "1986" & waterYear != "1988" & waterYear != "1989" & waterYear != "1993" & waterYear != "1994" & waterYear != "1995" & waterYear != "1996" & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_378_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Culling WY 1986 as well.  
+ 
+```{r 378 culled plot}
+
+ggplot(snotel_378_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_378_xts <- xts(snotel_378_clean_culled$temperature_mean, order.by = snotel_378_clean_culled$Date)
+
+dygraph(temp_378_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_378_clean_culled <- snotel_378_clean_culled %>% 
+#  filter(temperature_mean < 19.3)
+
+temp_378_xts <- xts(snotel_378_clean_culled$temperature_mean, order.by = snotel_378_clean_culled$Date)
+
+dygraph(temp_378_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+###  Burro Mountain	378 
+*NSCE- Original, Bias- Morrisey* 7/11/2002
+
+```{r 378 adj}
+
+snotel_378_adjusted <- snotel_378_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2002-07-11", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 378 Detrended
+
+```{r 378 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_378 <- snotel_378_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_378 <- yearly_wy_aver_378 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_378 <- daily_wy_aver_378 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_378$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_378 <-daily_wy_aver_378 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_378$date_temp <- signif(daily_wy_aver2_378$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_378, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 378 SD 
+
+```{r 378 SD}
+
+standard_dev_378 <- daily_wy_aver_378 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_378 <- standard_dev_378 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_378 <- standard_dev_all_378 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_378 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_378, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 378 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 378 (non-corrected)
+
+```{r 378 sd mk & ss non corrected}
+
+sd_mk_378 <- mk.test(standard_dev_all_378$sd_2)
+print(sd_mk_378)
+
+sd_sens_378 <- sens.slope(standard_dev_all_378$sd_2)
+print(sd_sens_378)
+
+```
+
+#### Corrected
+
+
+#### 378 Detrended (corrected)
+
+```{r 378 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_378_ad <- snotel_378_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_378_ad <- yearly_wy_aver_378_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_378_ad <- daily_wy_aver_378_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_378_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_378_ad <-daily_wy_aver_378_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_378_ad$date_temp_ad <- signif(daily_wy_aver2_378_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_378_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 378 SS (corrected)
+
+```{r 378 SD adjusted}
+standard_dev_378_ad <- daily_wy_aver_378_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_378_ad <- standard_dev_378_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_378_ad <- standard_dev_all_378_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_378_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_378_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 378 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 378 (corrected)
+
+```{r 378 sd mk & ss adjusted}
+sd_mk_378_ad <- mk.test(standard_dev_all_378_ad$sd_2)
+print(sd_mk_378_ad)
+
+sd_sens_378_ad <- sens.slope(standard_dev_all_378_ad$sd_2)
+print(sd_sens_378_ad)
+
+```
+
+# Columbine 408 
+*Morrisey* 7/22/2005
+
+```{r filter (408) station}
+
+snotel_408 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "408")
+
+```
+
+```{r 408 clean & water year & day }
+#str(snotel_408) # check the date, usually a character.  
+
+snotel_408$Date <- as.Date(snotel_408$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_408_clean <- snotel_408 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_408_clean <- snotel_408_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 408 plot check }
+
+# Check for outliers
+
+ggplot(snotel_408_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 408 trying to clean outliers}
+
+
+
+snotel_408_clean <- snotel_408_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40)# %>% 
+  #filter(temperature_mean < 25)
+
+```
+
+
+```{r 408 temp difference}
+
+ggplot(snotel_408_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 408 cull selection}
+
+# filtering for temperature anomalies
+#snotel_408_cull_count <- snotel_408_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_408_cull_count
+
+# filtering for too few observations in a year
+snotel_408_cull_count_days <- snotel_408_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_408_cull_count_days
+
+```
+
+```{r 408 cull}
+
+snotel_408_clean_culled <- snotel_408_clean %>% 
+  filter(waterYear > "1987" & waterYear != "1993" & waterYear != "1994" & waterYear != "2002")# & waterYear != "1985" & waterYear != "1986" & waterYear != "1987" & waterYear != "1994" & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_408_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Culling WY 1986 & 1993 as well.  
+ 
+```{r 408 culled plot}
+
+ggplot(snotel_408_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_408_xts <- xts(snotel_408_clean_culled$temperature_mean, order.by = snotel_408_clean_culled$Date)
+
+dygraph(temp_408_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+snotel_408_clean_culled <- snotel_408_clean_culled %>% 
+  filter(temperature_mean > -30)
+
+temp_408_xts <- xts(snotel_408_clean_culled$temperature_mean, order.by = snotel_408_clean_culled$Date)
+
+dygraph(temp_408_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+###  Columbine 408 *Morrisey* 7/22/2005
+
+```{r 408 adj}
+
+snotel_408_adjusted <- snotel_408_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2005-07-22", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 408 Detrended
+
+```{r 408 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_408 <- snotel_408_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_408 <- yearly_wy_aver_408 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_408 <- daily_wy_aver_408 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_408$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_408 <-daily_wy_aver_408 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_408$date_temp <- signif(daily_wy_aver2_408$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_408, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 408 SD 
+
+```{r 408 SD}
+
+standard_dev_408 <- daily_wy_aver_408 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_408 <- standard_dev_408 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_408 <- standard_dev_all_408 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_408 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_408, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 408 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 408 (non-corrected)
+
+```{r 408 sd mk & ss non corrected}
+
+sd_mk_408 <- mk.test(standard_dev_all_408$sd_2)
+print(sd_mk_408)
+
+sd_sens_408 <- sens.slope(standard_dev_all_408$sd_2)
+print(sd_sens_408)
+
+```
+
+#### Corrected
+
+
+#### 408 Detrended (corrected)
+
+```{r 408 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_408_ad <- snotel_408_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_408_ad <- yearly_wy_aver_408_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_408_ad <- daily_wy_aver_408_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_408_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_408_ad <-daily_wy_aver_408_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_408_ad$date_temp_ad <- signif(daily_wy_aver2_408_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_408_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 408 SS (corrected)
+
+```{r 408 SD adjusted}
+standard_dev_408_ad <- daily_wy_aver_408_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_408_ad <- standard_dev_408_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_408_ad <- standard_dev_all_408_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_408_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_408_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 408 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 408 (corrected)
+
+```{r 408 sd mk & ss adjusted}
+sd_mk_408_ad <- mk.test(standard_dev_all_408_ad$sd_2)
+print(sd_mk_408_ad)
+
+sd_sens_408_ad <- sens.slope(standard_dev_all_408_ad$sd_2)
+print(sd_sens_408_ad)
+
+```
+
