@@ -89,7 +89,7 @@ Elk River	467 *Oyler -> Morrisey* 8/7/2006
 
 Lynx Pass	607 *Morrisey* 5/22/2006
 
-Rabbit Ears	709 *Morrisey* 8/7/2006
+Rabbit Ears	709 *Morrisey* 8/7/2006 (Does not go.)
 
 Ripple Creek	717 *Oyler -> Morrisey* 8/7/2006
 
@@ -739,3 +739,2811 @@ print(sd_sens_408_ad)
 
 ```
 
+# Columbine Pass	409 
+*Morrisey* 6/23/2005
+
+```{r filter (409) station}
+
+snotel_409 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "409")
+
+```
+
+```{r 409 clean & water year & day }
+#str(snotel_409) # check the date, usually a character.  
+
+snotel_409$Date <- as.Date(snotel_409$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_409_clean <- snotel_409 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_409_clean <- snotel_409_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 409 plot check }
+
+# Check for outliers
+
+ggplot(snotel_409_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 409 trying to clean outliers}
+
+
+
+snotel_409_clean <- snotel_409_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -50) %>% 
+  filter(temperature_mean < 40)
+
+```
+
+
+```{r 409 temp difference}
+
+ggplot(snotel_409_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 409 cull selection}
+
+# filtering for temperature anomalies
+#snotel_409_cull_count <- snotel_409_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_409_cull_count
+
+# filtering for too few observations in a year
+snotel_409_cull_count_days <- snotel_409_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_409_cull_count_days
+
+```
+
+```{r 409 cull}
+
+snotel_409_clean_culled <- snotel_409_clean %>% 
+  filter(waterYear != "1994" & waterYear != "1995" & waterYear != "2005" & waterYear != "2019" & waterYear != "2022")# & waterYear != "1986" & waterYear != "1987" & waterYear != "1994" & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_409_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+```{r 409 culled plot}
+
+ggplot(snotel_409_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_409_xts <- xts(snotel_409_clean_culled$temperature_mean, order.by = snotel_409_clean_culled$Date)
+
+dygraph(temp_409_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_409_clean_culled <- snotel_409_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_409_xts <- xts(snotel_409_clean_culled$temperature_mean, order.by = snotel_409_clean_culled$Date)
+
+#dygraph(temp_409_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+###  Columbine Pass	409 
+*Morrisey* 6/23/2005
+```{r 409 adj}
+
+snotel_409_adjusted <- snotel_409_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2005-06-23", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 409 Detrended
+
+```{r 409 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_409 <- snotel_409_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_409 <- yearly_wy_aver_409 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_409 <- daily_wy_aver_409 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_409$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_409 <-daily_wy_aver_409 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_409$date_temp <- signif(daily_wy_aver2_409$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_409, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 409 SD 
+
+```{r 409 SD}
+
+standard_dev_409 <- daily_wy_aver_409 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_409 <- standard_dev_409 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_409 <- standard_dev_all_409 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_409 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_409, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 409 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 409 (non-corrected)
+
+```{r 409 sd mk & ss non corrected}
+
+sd_mk_409 <- mk.test(standard_dev_all_409$sd_2)
+print(sd_mk_409)
+
+sd_sens_409 <- sens.slope(standard_dev_all_409$sd_2)
+print(sd_sens_409)
+
+```
+
+#### Corrected
+
+
+#### 409 Detrended (corrected)
+
+```{r 409 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_409_ad <- snotel_409_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_409_ad <- yearly_wy_aver_409_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_409_ad <- daily_wy_aver_409_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_409_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_409_ad <-daily_wy_aver_409_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_409_ad$date_temp_ad <- signif(daily_wy_aver2_409_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_409_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 409 SS (corrected)
+
+```{r 409 SD adjusted}
+standard_dev_409_ad <- daily_wy_aver_409_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_409_ad <- standard_dev_409_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_409_ad <- standard_dev_all_409_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_409_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_409_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 409 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 409 (corrected)
+
+```{r 409 sd mk & ss adjusted}
+sd_mk_409_ad <- mk.test(standard_dev_all_409_ad$sd_2)
+print(sd_mk_409_ad)
+
+sd_sens_409_ad <- sens.slope(standard_dev_all_409_ad$sd_2)
+print(sd_sens_409_ad)
+
+```
+
+# Crosho	426 
+*Morrisey* 7/21/2005
+
+```{r filter (426) station}
+
+snotel_426 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "426")
+
+```
+
+```{r 426 clean & water year & day }
+#str(snotel_426) # check the date, usually a character.  
+
+snotel_426$Date <- as.Date(snotel_426$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_426_clean <- snotel_426 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_426_clean <- snotel_426_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 426 plot check }
+
+# Check for outliers
+
+ggplot(snotel_426_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 426 trying to clean outliers}
+
+
+
+snotel_426_clean <- snotel_426_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -50) %>% 
+  filter(temperature_mean < 40)
+
+```
+
+
+```{r 426 temp difference}
+
+ggplot(snotel_426_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 426 cull selection}
+
+# filtering for temperature anomalies
+#snotel_426_cull_count <- snotel_426_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_426_cull_count
+
+# filtering for too few observations in a year
+snotel_426_cull_count_days <- snotel_426_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_426_cull_count_days
+
+```
+
+```{r 426 cull}
+
+snotel_426_clean_culled <- snotel_426_clean %>% 
+  filter(waterYear != "2009" & waterYear != "2021")# & waterYear != "2005" & waterYear != "2019" & waterYear != "2022")# & waterYear != "1986" & waterYear != "1987" & waterYear != "1994" & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_426_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+```{r 426 culled plot}
+
+ggplot(snotel_426_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_426_xts <- xts(snotel_426_clean_culled$temperature_mean, order.by = snotel_426_clean_culled$Date)
+
+dygraph(temp_426_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_426_clean_culled <- snotel_426_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_426_xts <- xts(snotel_426_clean_culled$temperature_mean, order.by = snotel_426_clean_culled$Date)
+
+#dygraph(temp_426_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Crosho	426 *Morrisey* 7/21/2005
+
+
+```{r 426 adj}
+
+snotel_426_adjusted <- snotel_426_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2005-07-21", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 426 Detrended
+
+```{r 426 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_426 <- snotel_426_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_426 <- yearly_wy_aver_426 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_426 <- daily_wy_aver_426 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_426$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_426 <-daily_wy_aver_426 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_426$date_temp <- signif(daily_wy_aver2_426$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_426, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 426 SD 
+
+```{r 426 SD}
+
+standard_dev_426 <- daily_wy_aver_426 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_426 <- standard_dev_426 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_426 <- standard_dev_all_426 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_426 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_426, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 426 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 426 (non-corrected)
+
+```{r 426 sd mk & ss non corrected}
+
+sd_mk_426 <- mk.test(standard_dev_all_426$sd_2)
+print(sd_mk_426)
+
+sd_sens_426 <- sens.slope(standard_dev_all_426$sd_2)
+print(sd_sens_426)
+
+```
+
+#### Corrected
+
+
+#### 426 Detrended (corrected)
+
+```{r 426 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_426_ad <- snotel_426_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_426_ad <- yearly_wy_aver_426_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_426_ad <- daily_wy_aver_426_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_426_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_426_ad <-daily_wy_aver_426_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_426_ad$date_temp_ad <- signif(daily_wy_aver2_426_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_426_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 426 SS (corrected)
+
+```{r 426 SD adjusted}
+standard_dev_426_ad <- daily_wy_aver_426_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_426_ad <- standard_dev_426_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_426_ad <- standard_dev_all_426_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_426_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_426_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 426 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 426 (corrected)
+
+```{r 426 sd mk & ss adjusted}
+sd_mk_426_ad <- mk.test(standard_dev_all_426_ad$sd_2)
+print(sd_mk_426_ad)
+
+sd_sens_426_ad <- sens.slope(standard_dev_all_426_ad$sd_2)
+print(sd_sens_426_ad)
+
+```
+
+# Dry Lake	457 
+*Oyler -> Morrisey* 7/30/2003
+
+```{r filter (457) station}
+
+snotel_457 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "457")
+
+```
+
+```{r 457 clean & water year & day }
+#str(snotel_457) # check the date, usually a character.  
+
+snotel_457$Date <- as.Date(snotel_457$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_457_clean <- snotel_457 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_457_clean <- snotel_457_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 457 plot check }
+
+# Check for outliers
+
+ggplot(snotel_457_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 457 trying to clean outliers}
+
+
+
+snotel_457_clean <- snotel_457_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40) %>% 
+  filter(temperature_mean < 40)
+
+```
+
+
+```{r 457 temp difference}
+
+ggplot(snotel_457_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 457 cull selection}
+
+# filtering for temperature anomalies
+#snotel_457_cull_count <- snotel_457_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_457_cull_count
+
+# filtering for too few observations in a year
+snotel_457_cull_count_days <- snotel_457_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_457_cull_count_days
+
+```
+
+```{r 457 cull}
+
+snotel_457_clean_culled <- snotel_457_clean %>% 
+  filter(waterYear != "1985" & waterYear != "1986" & waterYear != "1994" & waterYear != "1996" & waterYear != "1997" & waterYear != "2003" & waterYear != "2021")# & waterYear != "1987" & waterYear != "1994" & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_457_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+Also 1986
+ 
+```{r 457 culled plot}
+
+ggplot(snotel_457_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_457_xts <- xts(snotel_457_clean_culled$temperature_mean, order.by = snotel_457_clean_culled$Date)
+
+dygraph(temp_457_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_457_clean_culled <- snotel_457_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_457_xts <- xts(snotel_457_clean_culled$temperature_mean, order.by = snotel_457_clean_culled$Date)
+
+#dygraph(temp_457_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Dry Lake	457 *Oyler -> Morrisey* 7/30/2003
+
+
+```{r 457 adj}
+
+snotel_457_adjusted <- snotel_457_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2003-07-30", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 457 Detrended
+
+```{r 457 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_457 <- snotel_457_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_457 <- yearly_wy_aver_457 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_457 <- daily_wy_aver_457 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_457$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_457 <-daily_wy_aver_457 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_457$date_temp <- signif(daily_wy_aver2_457$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_457, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 457 SD 
+
+```{r 457 SD}
+
+standard_dev_457 <- daily_wy_aver_457 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_457 <- standard_dev_457 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_457 <- standard_dev_all_457 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_457 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_457, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 457 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 457 (non-corrected)
+
+```{r 457 sd mk & ss non corrected}
+
+sd_mk_457 <- mk.test(standard_dev_all_457$sd_2)
+print(sd_mk_457)
+
+sd_sens_457 <- sens.slope(standard_dev_all_457$sd_2)
+print(sd_sens_457)
+
+```
+
+#### Corrected
+
+
+#### 457 Detrended (corrected)
+
+```{r 457 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_457_ad <- snotel_457_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_457_ad <- yearly_wy_aver_457_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_457_ad <- daily_wy_aver_457_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_457_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_457_ad <-daily_wy_aver_457_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_457_ad$date_temp_ad <- signif(daily_wy_aver2_457_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_457_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 457 SS (corrected)
+
+```{r 457 SD adjusted}
+standard_dev_457_ad <- daily_wy_aver_457_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_457_ad <- standard_dev_457_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_457_ad <- standard_dev_all_457_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_457_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_457_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 457 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 457 (corrected)
+
+```{r 457 sd mk & ss adjusted}
+sd_mk_457_ad <- mk.test(standard_dev_all_457_ad$sd_2)
+print(sd_mk_457_ad)
+
+sd_sens_457_ad <- sens.slope(standard_dev_all_457_ad$sd_2)
+print(sd_sens_457_ad)
+
+```
+
+# Elk River	467 
+*Oyler -> Morrisey* 8/7/2006
+
+```{r filter (467) station}
+
+snotel_467 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "467")
+
+```
+
+```{r 467 clean & water year & day }
+#str(snotel_467) # check the date, usually a character.  
+
+snotel_467$Date <- as.Date(snotel_467$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_467_clean <- snotel_467 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_467_clean <- snotel_467_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 467 plot check }
+
+# Check for outliers
+
+ggplot(snotel_467_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 467 trying to clean outliers}
+
+
+
+snotel_467_clean <- snotel_467_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40) %>% 
+  filter(temperature_mean < 40)
+
+```
+
+
+```{r 467 temp difference}
+
+ggplot(snotel_467_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 467 cull selection}
+
+# filtering for temperature anomalies
+#snotel_467_cull_count <- snotel_467_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_467_cull_count
+
+# filtering for too few observations in a year
+snotel_467_cull_count_days <- snotel_467_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_467_cull_count_days
+
+```
+
+```{r 467 cull}
+
+snotel_467_clean_culled <- snotel_467_clean %>% 
+  filter(waterYear != "1985" & waterYear != "1986" & waterYear != "1994" & waterYear != "1998" & waterYear != "1999" & waterYear != "2001" & waterYear != "2021")# & waterYear != "2021")# & waterYear != "1987" & waterYear != "1994" & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_467_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+Also 1986
+ 
+```{r 467 culled plot}
+
+ggplot(snotel_467_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_467_xts <- xts(snotel_467_clean_culled$temperature_mean, order.by = snotel_467_clean_culled$Date)
+
+dygraph(temp_467_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_467_clean_culled <- snotel_467_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_467_xts <- xts(snotel_467_clean_culled$temperature_mean, order.by = snotel_467_clean_culled$Date)
+
+#dygraph(temp_467_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Elk River	467 *Oyler -> Morrisey* 8/7/2006
+
+```{r 467 adj}
+
+snotel_467_adjusted <- snotel_467_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2006-08-07", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 467 Detrended
+
+```{r 467 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_467 <- snotel_467_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_467 <- yearly_wy_aver_467 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_467 <- daily_wy_aver_467 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_467$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_467 <-daily_wy_aver_467 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_467$date_temp <- signif(daily_wy_aver2_467$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_467, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 467 SD 
+
+```{r 467 SD}
+
+standard_dev_467 <- daily_wy_aver_467 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_467 <- standard_dev_467 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_467 <- standard_dev_all_467 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_467 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_467, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 467 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 467 (non-corrected)
+
+```{r 467 sd mk & ss non corrected}
+
+sd_mk_467 <- mk.test(standard_dev_all_467$sd_2)
+print(sd_mk_467)
+
+sd_sens_467 <- sens.slope(standard_dev_all_467$sd_2)
+print(sd_sens_467)
+
+```
+
+#### Corrected
+
+
+#### 467 Detrended (corrected)
+
+```{r 467 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_467_ad <- snotel_467_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_467_ad <- yearly_wy_aver_467_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_467_ad <- daily_wy_aver_467_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_467_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_467_ad <-daily_wy_aver_467_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_467_ad$date_temp_ad <- signif(daily_wy_aver2_467_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_467_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 467 SS (corrected)
+
+```{r 467 SD adjusted}
+standard_dev_467_ad <- daily_wy_aver_467_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_467_ad <- standard_dev_467_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_467_ad <- standard_dev_all_467_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_467_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_467_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 467 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 467 (corrected)
+
+```{r 467 sd mk & ss adjusted}
+sd_mk_467_ad <- mk.test(standard_dev_all_467_ad$sd_2)
+print(sd_mk_467_ad)
+
+sd_sens_467_ad <- sens.slope(standard_dev_all_467_ad$sd_2)
+print(sd_sens_467_ad)
+
+```
+
+# Lynx Pass	607 
+*Morrisey* 5/22/2006
+
+
+```{r filter (607) station}
+
+snotel_607 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "607")
+
+```
+
+```{r 607 clean & water year & day }
+#str(snotel_607) # check the date, usually a character.  
+
+snotel_607$Date <- as.Date(snotel_607$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_607_clean <- snotel_607 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_607_clean <- snotel_607_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 607 plot check }
+
+# Check for outliers
+
+ggplot(snotel_607_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 607 trying to clean outliers}
+
+
+
+snotel_607_clean <- snotel_607_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40) %>% 
+  filter(temperature_mean < 40)
+
+```
+
+
+```{r 607 temp difference}
+
+ggplot(snotel_607_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 607 cull selection}
+
+# filtering for temperature anomalies
+#snotel_607_cull_count <- snotel_607_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_607_cull_count
+
+# filtering for too few observations in a year
+snotel_607_cull_count_days <- snotel_607_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_607_cull_count_days
+
+```
+
+```{r 607 cull}
+
+snotel_607_clean_culled <- snotel_607_clean %>% 
+  filter(waterYear != "1985" & waterYear != "1986" & waterYear != "1994" & waterYear != "2019" & waterYear != "2020")# & waterYear != "2001" & waterYear != "2021")# & waterYear != "2021")# & waterYear != "1987" & waterYear != "1994" & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_607_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+Also 1986
+ 
+```{r 607 culled plot}
+
+ggplot(snotel_607_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_607_xts <- xts(snotel_607_clean_culled$temperature_mean, order.by = snotel_607_clean_culled$Date)
+
+dygraph(temp_607_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_607_clean_culled <- snotel_607_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_607_xts <- xts(snotel_607_clean_culled$temperature_mean, order.by = snotel_607_clean_culled$Date)
+
+#dygraph(temp_607_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Lynx Pass	607 *Morrisey* 5/22/2006
+
+```{r 607 adj}
+
+snotel_607_adjusted <- snotel_607_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2006-05-22", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 607 Detrended
+
+```{r 607 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_607 <- snotel_607_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_607 <- yearly_wy_aver_607 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_607 <- daily_wy_aver_607 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_607$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_607 <-daily_wy_aver_607 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_607$date_temp <- signif(daily_wy_aver2_607$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_607, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 607 SD 
+
+```{r 607 SD}
+
+standard_dev_607 <- daily_wy_aver_607 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_607 <- standard_dev_607 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_607 <- standard_dev_all_607 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_607 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_607, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 607 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 607 (non-corrected)
+
+```{r 607 sd mk & ss non corrected}
+
+sd_mk_607 <- mk.test(standard_dev_all_607$sd_2)
+print(sd_mk_607)
+
+sd_sens_607 <- sens.slope(standard_dev_all_607$sd_2)
+print(sd_sens_607)
+
+```
+
+#### Corrected
+
+
+#### 607 Detrended (corrected)
+
+```{r 607 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_607_ad <- snotel_607_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_607_ad <- yearly_wy_aver_607_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_607_ad <- daily_wy_aver_607_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_607_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_607_ad <-daily_wy_aver_607_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_607_ad$date_temp_ad <- signif(daily_wy_aver2_607_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_607_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 607 SS (corrected)
+
+```{r 607 SD adjusted}
+standard_dev_607_ad <- daily_wy_aver_607_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_607_ad <- standard_dev_607_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_607_ad <- standard_dev_all_607_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_607_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_607_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 607 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 607 (corrected)
+
+```{r 607 sd mk & ss adjusted}
+sd_mk_607_ad <- mk.test(standard_dev_all_607_ad$sd_2)
+print(sd_mk_607_ad)
+
+sd_sens_607_ad <- sens.slope(standard_dev_all_607_ad$sd_2)
+print(sd_sens_607_ad)
+
+```
+
+# Rabbit Ears	709 
+*Morrisey* 8/7/2006
+
+```{r filter (709) station}
+
+snotel_709 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "709")
+
+```
+
+```{r 709 clean & water year & day }
+#str(snotel_709) # check the date, usually a character.  
+
+snotel_709$Date <- as.Date(snotel_709$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_709_clean <- snotel_709 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_709_clean <- snotel_709_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 709 plot check }
+
+# Check for outliers
+
+ggplot(snotel_709_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 709 trying to clean outliers}
+
+
+
+snotel_709_clean <- snotel_709_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40) %>% 
+  filter(temperature_mean < 40)
+
+```
+
+
+```{r 709 temp difference}
+
+ggplot(snotel_709_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 709 cull selection}
+
+# filtering for temperature anomalies
+#snotel_709_cull_count <- snotel_709_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_709_cull_count
+
+# filtering for too few observations in a year
+snotel_709_cull_count_days <- snotel_709_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_709_cull_count_days
+
+```
+
+```{r 709 cull}
+
+snotel_709_clean_culled <- snotel_709_clean %>% 
+  filter(waterYear > "1995" & waterYear != "2006" & waterYear != "2007" & waterYear != "2011" & waterYear != "2012" & waterYear != "2013" & waterYear != "2014" & waterYear != "2015" & waterYear != "2016" & waterYear != "2017" & waterYear != "2018")# & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_709_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+ 
+```{r 709 culled plot}
+
+ggplot(snotel_709_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_709_xts <- xts(snotel_709_clean_culled$temperature_mean, order.by = snotel_709_clean_culled$Date)
+
+dygraph(temp_709_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_709_clean_culled <- snotel_709_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_709_xts <- xts(snotel_709_clean_culled$temperature_mean, order.by = snotel_709_clean_culled$Date)
+
+#dygraph(temp_709_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Rabbit Ears	709 *Morrisey* 8/7/2006
+
+```{r 709 adj}
+
+snotel_709_adjusted <- snotel_709_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2006-08-07", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 709 Detrended
+
+```{r 709 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_709 <- snotel_709_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_709 <- yearly_wy_aver_709 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_709 <- daily_wy_aver_709 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_709$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_709 <-daily_wy_aver_709 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_709$date_temp <- signif(daily_wy_aver2_709$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_709, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 709 SD 
+
+```{r 709 SD}
+
+standard_dev_709 <- daily_wy_aver_709 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_709 <- standard_dev_709 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_709 <- standard_dev_all_709 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_709 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_709, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 709 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 709 (non-corrected)
+
+```{r 709 sd mk & ss non corrected}
+
+sd_mk_709 <- mk.test(standard_dev_all_709$sd_2)
+print(sd_mk_709)
+
+sd_sens_709 <- sens.slope(standard_dev_all_709$sd_2)
+print(sd_sens_709)
+
+```
+
+#### Corrected
+
+
+#### 709 Detrended (corrected)
+
+```{r 709 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_709_ad <- snotel_709_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_709_ad <- yearly_wy_aver_709_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_709_ad <- daily_wy_aver_709_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_709_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_709_ad <-daily_wy_aver_709_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_709_ad$date_temp_ad <- signif(daily_wy_aver2_709_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_709_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 709 SS (corrected)
+
+```{r 709 SD adjusted}
+standard_dev_709_ad <- daily_wy_aver_709_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_709_ad <- standard_dev_709_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_709_ad <- standard_dev_all_709_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_709_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_709_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 709 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 709 (corrected)
+
+```{r 709 sd mk & ss adjusted}
+sd_mk_709_ad <- mk.test(standard_dev_all_709_ad$sd_2)
+print(sd_mk_709_ad)
+
+sd_sens_709_ad <- sens.slope(standard_dev_all_709_ad$sd_2)
+print(sd_sens_709_ad)
+
+```
+
+# Ripple Creek	717 
+*Oyler -> Morrisey* 8/7/2006
+
+
+```{r filter (717) station}
+
+snotel_717 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "717")
+
+```
+
+```{r 717 clean & water year & day }
+#str(snotel_717) # check the date, usually a character.  
+
+snotel_717$Date <- as.Date(snotel_717$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_717_clean <- snotel_717 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_717_clean <- snotel_717_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 717 plot check }
+
+# Check for outliers
+
+ggplot(snotel_717_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 717 trying to clean outliers}
+
+
+
+snotel_717_clean <- snotel_717_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40) %>% 
+  filter(temperature_mean < 40)
+
+```
+
+
+```{r 717 temp difference}
+
+ggplot(snotel_717_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 717 cull selection}
+
+# filtering for temperature anomalies
+#snotel_717_cull_count <- snotel_717_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_717_cull_count
+
+# filtering for too few observations in a year
+snotel_717_cull_count_days <- snotel_717_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_717_cull_count_days
+
+```
+
+```{r 717 cull}
+
+snotel_717_clean_culled <- snotel_717_clean %>% 
+  filter(waterYear != "1992" & waterYear != "1993")# & waterYear != "2007" & waterYear != "2011" & waterYear != "2012" & waterYear != "2013" & waterYear != "2014" & waterYear != "2015" & waterYear != "2016" & waterYear != "2017" & waterYear != "2018")# & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_717_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+ 
+```{r 717 culled plot}
+
+ggplot(snotel_717_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_717_xts <- xts(snotel_717_clean_culled$temperature_mean, order.by = snotel_717_clean_culled$Date)
+
+dygraph(temp_717_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_717_clean_culled <- snotel_717_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_717_xts <- xts(snotel_717_clean_culled$temperature_mean, order.by = snotel_717_clean_culled$Date)
+
+#dygraph(temp_717_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Ripple Creek	717 *Oyler -> Morrisey* 8/7/2006
+
+```{r 717 adj}
+
+snotel_717_adjusted <- snotel_717_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2006-08-07", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 717 Detrended
+
+```{r 717 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_717 <- snotel_717_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_717 <- yearly_wy_aver_717 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_717 <- daily_wy_aver_717 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_717$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_717 <-daily_wy_aver_717 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_717$date_temp <- signif(daily_wy_aver2_717$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_717, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 717 SD 
+
+```{r 717 SD}
+
+standard_dev_717 <- daily_wy_aver_717 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_717 <- standard_dev_717 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_717 <- standard_dev_all_717 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_717 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_717, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 717 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 717 (non-corrected)
+
+```{r 717 sd mk & ss non corrected}
+
+sd_mk_717 <- mk.test(standard_dev_all_717$sd_2)
+print(sd_mk_717)
+
+sd_sens_717 <- sens.slope(standard_dev_all_717$sd_2)
+print(sd_sens_717)
+
+```
+
+#### Corrected
+
+
+#### 717 Detrended (corrected)
+
+```{r 717 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_717_ad <- snotel_717_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_717_ad <- yearly_wy_aver_717_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_717_ad <- daily_wy_aver_717_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_717_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_717_ad <-daily_wy_aver_717_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_717_ad$date_temp_ad <- signif(daily_wy_aver2_717_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_717_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 717 SS (corrected)
+
+```{r 717 SD adjusted}
+standard_dev_717_ad <- daily_wy_aver_717_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_717_ad <- standard_dev_717_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_717_ad <- standard_dev_all_717_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_717_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_717_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 717 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 717 (corrected)
+
+```{r 717 sd mk & ss adjusted}
+sd_mk_717_ad <- mk.test(standard_dev_all_717_ad$sd_2)
+print(sd_mk_717_ad)
+
+sd_sens_717_ad <- sens.slope(standard_dev_all_717_ad$sd_2)
+print(sd_sens_717_ad)
+
+```
+
+# Tower	825 
+*Original* 8/18/2004
+
+```{r filter (825) station}
+
+snotel_825 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "825")
+
+```
+
+```{r 825 clean & water year & day }
+#str(snotel_825) # check the date, usually a character.  
+
+snotel_825$Date <- as.Date(snotel_825$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_825_clean <- snotel_825 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_825_clean <- snotel_825_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 825 plot check }
+
+# Check for outliers
+
+ggplot(snotel_825_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 825 trying to clean outliers}
+
+
+
+snotel_825_clean <- snotel_825_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40) %>% 
+  filter(temperature_mean < 30)
+
+```
+
+
+```{r 825 temp difference}
+
+ggplot(snotel_825_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 825 cull selection}
+
+# filtering for temperature anomalies
+#snotel_825_cull_count <- snotel_825_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_825_cull_count
+
+# filtering for too few observations in a year
+snotel_825_cull_count_days <- snotel_825_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_825_cull_count_days
+
+```
+
+```{r 825 cull}
+
+snotel_825_clean_culled <- snotel_825_clean %>% 
+  filter(waterYear > "1987" & waterYear != "1994" & waterYear != "1995" & waterYear != "1997" & waterYear != "1998" & waterYear != "1999" & waterYear != "2002" & waterYear != "2008")# & waterYear != "2017" & waterYear != "2018")# & waterYear != "2002")# & waterYear != "2002" & waterYear != "2016" & waterYear != "2022")# & waterYear != "2017") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_825_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+ 
+```{r 825 culled plot}
+
+ggplot(snotel_825_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_825_xts <- xts(snotel_825_clean_culled$temperature_mean, order.by = snotel_825_clean_culled$Date)
+
+dygraph(temp_825_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_825_clean_culled <- snotel_825_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_825_xts <- xts(snotel_825_clean_culled$temperature_mean, order.by = snotel_825_clean_culled$Date)
+
+#dygraph(temp_825_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Tower	825 *Original* 8/18/2004
+
+
+```{r 825 adj}
+
+snotel_825_adjusted <- snotel_825_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2004-08-18", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 825 Detrended
+
+```{r 825 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_825 <- snotel_825_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_825 <- yearly_wy_aver_825 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_825 <- daily_wy_aver_825 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_825$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_825 <-daily_wy_aver_825 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_825$date_temp <- signif(daily_wy_aver2_825$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_825, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 825 SD 
+
+```{r 825 SD}
+
+standard_dev_825 <- daily_wy_aver_825 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_825 <- standard_dev_825 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_825 <- standard_dev_all_825 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_825 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_825, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 825 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 825 (non-corrected)
+
+```{r 825 sd mk & ss non corrected}
+
+sd_mk_825 <- mk.test(standard_dev_all_825$sd_2)
+print(sd_mk_825)
+
+sd_sens_825 <- sens.slope(standard_dev_all_825$sd_2)
+print(sd_sens_825)
+
+```
+
+#### Corrected
+
+
+#### 825 Detrended (corrected)
+
+```{r 825 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_825_ad <- snotel_825_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_825_ad <- yearly_wy_aver_825_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_825_ad <- daily_wy_aver_825_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_825_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_825_ad <-daily_wy_aver_825_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_825_ad$date_temp_ad <- signif(daily_wy_aver2_825_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_825_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 825 SS (corrected)
+
+```{r 825 SD adjusted}
+standard_dev_825_ad <- daily_wy_aver_825_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_825_ad <- standard_dev_825_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_825_ad <- standard_dev_all_825_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_825_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_825_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 825 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 825 (corrected)
+
+```{r 825 sd mk & ss adjusted}
+sd_mk_825_ad <- mk.test(standard_dev_all_825_ad$sd_2)
+print(sd_mk_825_ad)
+
+sd_sens_825_ad <- sens.slope(standard_dev_all_825_ad$sd_2)
+print(sd_sens_825_ad)
+
+```
+
+Trapper Lake	827 *Original* 12/13/2004
+
+# Trapper Lake	827 
+*Original* 12/13/2004
+
+```{r filter (827) station}
+
+snotel_827 <- SNOTEL_yampa_area %>% 
+  filter(site_id == "827")
+
+```
+
+```{r 827 clean & water year & day }
+#str(snotel_827) # check the date, usually a character.  
+
+snotel_827$Date <- as.Date(snotel_827$date) #change date from character to date format, capitalize to work with Water year functon from NWIS.
+
+#THIS WILL CHANGE FOR EACH STATION
+snotel_827_clean <- snotel_827 %>% # filter for the timeframe
+  filter(Date >= "1979-10-01" & Date <= "2022-09-30") %>%
+  #filter(temperature_mean >= -30 & temperature_mean <= 20) %>% # removing outliers   
+  addWaterYear() %>% 
+  mutate(daymonth = format(as.Date(Date), "%d-%m")) %>% 
+  na.omit()
+
+#adding water day using difftime (SUPER COOL. example from [this](https://stackoverflow.com/questions/48123049/create-day-index-based-on-water-year))
+
+snotel_827_clean <- snotel_827_clean %>% 
+  group_by(waterYear)%>% 
+  mutate(waterDay = (as.integer(difftime(Date, ymd(paste0(waterYear - 1 ,'-09-30')), units = "days"))))
+
+```
+
+
+```{r 827 plot check }
+
+# Check for outliers
+
+ggplot(snotel_827_clean, aes(x = Date, y = temperature_mean)) +
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+```
+
+
+```{r 827 trying to clean outliers}
+
+
+
+snotel_827_clean <- snotel_827_clean %>% 
+  mutate(temp_diff = abs(temperature_min - temperature_max)) %>% 
+  filter(temperature_mean > -40) %>% 
+  filter(temperature_mean < 30)
+
+```
+
+
+```{r 827 temp difference}
+
+ggplot(snotel_827_clean, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+Per Steven's advice: :If there are more than 15 missing days, then...remove that year"
+
+```{r 827 cull selection}
+
+# filtering for temperature anomalies
+#snotel_827_cull_count <- snotel_827_clean %>% 
+#  filter(temperature_min > -40) %>% 
+#  count(waterYear)
+
+#snotel_827_cull_count
+
+# filtering for too few observations in a year
+snotel_827_cull_count_days <- snotel_827_clean %>% 
+  group_by(waterYear) %>% 
+  count(waterYear) %>% 
+  filter(n < 350)
+
+snotel_827_cull_count_days
+
+```
+
+```{r 827 cull}
+
+snotel_827_clean_culled <- snotel_827_clean %>% 
+  filter(waterYear != "1986" & waterYear != "1994" & waterYear != "1995" & waterYear != "1996" & waterYear != "1997" & waterYear != "1999" & waterYear != "2001" & waterYear != "2002" & waterYear != "2003" & waterYear != "2004" & waterYear != "2009" & waterYear != "2010" & waterYear != "2011" & waterYear != "2013" & waterYear != "2014" & waterYear != "2016" & waterYear != "2017" & waterYear != "2019") #%>% 
+  #filter(temperature_mean > -49)
+
+ggplot(snotel_827_clean_culled, aes(x = Date, y = temp_diff)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  #geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature varience (°C)') + 
+  xlab('Date')
+
+```
+
+ 
+```{r 827 culled plot}
+
+ggplot(snotel_827_clean_culled, aes(x = Date, y = temperature_mean)) + 
+  geom_point() + #lwd = 2) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('Daily temperature (°C)') + 
+  xlab('Date')
+
+
+temp_827_xts <- xts(snotel_827_clean_culled$temperature_mean, order.by = snotel_827_clean_culled$Date)
+
+dygraph(temp_827_xts) %>%
+  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+#snotel_827_clean_culled <- snotel_827_clean_culled %>% 
+#  filter(temperature_mean > -30)
+
+#temp_827_xts <- xts(snotel_827_clean_culled$temperature_mean, order.by = snotel_827_clean_culled$Date)
+
+#dygraph(temp_827_xts) %>%
+#  dyAxis("y", label = "Daily mean temperature (°C)") 
+
+
+```
+
+### Trapper Lake	827 
+*Original* 12/13/2004
+
+
+```{r 827 adj}
+
+snotel_827_adjusted <- snotel_827_clean_culled %>%
+  mutate(temp_ad = if_else(Date < "2004-12-13", ((5.3*10^(-7))*(temperature_mean^(4))+(3.72*10^(-5))*(temperature_mean^(3))-(2.16*10^(-3))*(temperature_mean^(2))-(7.32*10^(-2))*(temperature_mean)+1.37)+temperature_mean, temperature_mean))
+
+```
+
+
+Non-corrected
+
+#### 827 Detrended
+
+```{r 827 detrend}
+
+#using the clean culled df:
+
+#average water year temperature
+
+yearly_wy_aver_827 <- snotel_827_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp = mean(temperature_mean))
+
+#Average temperature by day for all water years:
+
+daily_wy_aver_827 <- yearly_wy_aver_827 %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp = mean(aver_ann_temp))
+
+#average mean temperature by day for the period of record:
+
+daily_wy_aver_827 <- daily_wy_aver_827 %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp = mean(daily_wy_aver_827$aver_day_temp))
+
+# try to show all years as means. 
+daily_wy_aver2_827 <-daily_wy_aver_827 %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp = mean(temperature_mean))
+  
+
+daily_wy_aver2_827$date_temp <- signif(daily_wy_aver2_827$date_temp,3) #reduce the sig figs
+
+
+ggplot(daily_wy_aver2_827, aes(x = waterDay, y = date_temp))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
+```
+
+#### 827 SD 
+
+```{r 827 SD}
+
+standard_dev_827 <- daily_wy_aver_827 %>% 
+  group_by(waterYear) %>% 
+  mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+
+standard_dev_all_827 <- standard_dev_827 %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+standard_dev_all_827 <- standard_dev_all_827 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+standard_dev_all_827 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(standard_dev_all_827, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 827 average temperatures for water years 2005-2021* 
+
+
+#### MK & SS for 827 (non-corrected)
+
+```{r 827 sd mk & ss non corrected}
+
+sd_mk_827 <- mk.test(standard_dev_all_827$sd_2)
+print(sd_mk_827)
+
+sd_sens_827 <- sens.slope(standard_dev_all_827$sd_2)
+print(sd_sens_827)
+
+```
+
+#### Corrected
+
+
+#### 827 Detrended (corrected)
+
+```{r 827 detrend adjusted}
+#using the clean culled df:
+#average water year temperature
+yearly_wy_aver_827_ad <- snotel_827_adjusted %>% 
+  group_by(waterYear) %>% 
+  mutate(aver_ann_temp_ad = mean(temp_ad))
+#Average temperature by day for all water years:
+daily_wy_aver_827_ad <- yearly_wy_aver_827_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+#average mean temperature by day for the period of record:
+daily_wy_aver_827_ad <- daily_wy_aver_827_ad %>% 
+  group_by(daymonth) %>% 
+  mutate(all_ave_temp_ad = mean(daily_wy_aver_827_ad$aver_day_temp_ad))
+# try to show all years as means. 
+daily_wy_aver2_827_ad <-daily_wy_aver_827_ad %>% 
+  group_by(waterDay) %>%
+  mutate(date_temp_ad = mean(temp_ad))
+  
+daily_wy_aver2_827_ad$date_temp_ad <- signif(daily_wy_aver2_827_ad$date_temp_ad,3) #reduce the sig figs
+ggplot(daily_wy_aver2_827_ad, aes(x = waterDay, y = date_temp_ad))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+```
+
+#### 827 SS (corrected)
+
+```{r 827 SD adjusted}
+standard_dev_827_ad <- daily_wy_aver_827_ad %>% 
+  group_by(waterYear) %>% 
+  #filter(waterYear >= 1987 & waterYear <= 2021) %>% 
+  mutate(residual = (all_ave_temp_ad-aver_ann_temp_ad)+temp_ad-aver_day_temp_ad) %>% 
+  mutate(deviation = abs(residual-lag(residual)))
+standard_dev_all_827_ad <- standard_dev_827_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+standard_dev_all_827_ad <- standard_dev_all_827_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+standard_dev_all_827_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(standard_dev_all_827_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 827 average temperatures for water years 1986-2021* 
+
+
+#### MK & SS 827 (corrected)
+
+```{r 827 sd mk & ss adjusted}
+sd_mk_827_ad <- mk.test(standard_dev_all_827_ad$sd_2)
+print(sd_mk_827_ad)
+
+sd_sens_827_ad <- sens.slope(standard_dev_all_827_ad$sd_2)
+print(sd_sens_827_ad)
+
+```
+
+
+**Note: figure captions are incorrect.**
