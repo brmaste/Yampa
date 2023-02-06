@@ -75,7 +75,7 @@ library(trend)
 
 Yampa Area SNOTEL sites:
 
-Burro Mountain	378 *NSCE- Original, Bias- Morrisey* 7/11/2002 (NSCE- 0.87 vs 0.84)
+Burro Mountain	378 *NSCE- Original, Bias- Morrisey* 7/11/2002 (NSCE- 0.87 vs 0.84, Bias- -0.03 vs. 0.11)
 
 Columbine 408 *Morrisey* 7/22/2005
 
@@ -116,6 +116,7 @@ SNOTEL_yampa_area <- read.csv("C:/Users/13074/Documents/ESS580/thesis_project/Ya
 
 # Burro Mountain	378 
 *NSCE- Original, Bias- Morrisey* 7/11/2002
+**Original is marked as having the smallest bias, but the sheet says original is smaller.) 
 
 ```{r filter (378) station}
 
