@@ -13,7 +13,7 @@ NOTES FROM SF:
 
 FOR STEAMBOAT, COMPARE THE DETRENDED CLIAMTE NORMAL CURVES AGAINST EACH OTHER
 
-Derry & fassnacht 2010 Compare climatology of snotel statuions= they don't have the same climatol9ogy based on the snow data
+Derry & fassnacht 2010 Compare climatology of SNOTEL stations= they don't have the same climatol9ogy based on the snow data
 
 Figure 5b - https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2009WR007835
 
@@ -36,6 +36,10 @@ The Morrisey Method is taken from [Ma, Fassnacht and Kampf.](https://agupubs.onl
 In R script: T(adjusted) = 5.3x10^(-7)xT(old)^4+3.72x10^(-5)xT(old)^3-2.16x10^(-3)xT(old)^2-7.32x10^(-2)xT(old)+1.37
 
 **In the Ma et al. spreadsheet, H1 is Morrisey, H2 is Oiler**
+
+# 01/3 update
+
+Analyzing by season for each station's timeseries, using the shifted mean of the time series, then sigmoidal detrending. Standard deviation is taken with the relevant days of the water year. 
 
 ```{r libraries, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -115,8 +119,8 @@ SNOTEL_yampa_area <- read.csv("C:/Users/13074/Documents/ESS580/thesis_project/Ya
 
 
 # Burro Mountain	378 
-*NSCE- Original, Bias- Morrisey* 7/11/2002
-**Original is marked as having the smallest bias, but the sheet says original is smaller.) 
+*NSCE- Original, Bias- Morrisey* 7/11/2002 so, ORIGINAL.
+**Morrisey is marked as having the smallest bias, but the sheet says original is smaller.** 
 
 ```{r filter (378) station}
 
@@ -427,6 +431,179 @@ sd_sens_378_ad <- sens.slope(standard_dev_all_378_ad$sd_2)
 print(sd_sens_378_ad)
 
 ```
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 378 SD summer NOT CORRECTED}
+summer_standard_dev_all_378 <- standard_dev_378 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_378 <- summer_standard_dev_all_378 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_378 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_378, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 378 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 378 (non-corrected)
+
+```{r 378 sd summer mk & ss non corrected}
+
+summer_sd_mk_378 <- mk.test(summer_standard_dev_all_378$sd_2)
+print(summer_sd_mk_378)
+
+summer_sd_sens_378 <- sens.slope(summer_standard_dev_all_378$sd_2)
+print(summer_sd_sens_378)
+
+```
+
+Winter
+```{r 378 SD winter NOT CORRECTED}
+winter_standard_dev_all_378 <- standard_dev_378 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_378 <- winter_standard_dev_all_378 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_378 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_378, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 378 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 378 (non-corrected)
+
+```{r 378 sd winter mk & ss non corrected}
+
+winter_sd_mk_378 <- mk.test(winter_standard_dev_all_378$sd_2)
+print(winter_sd_mk_378)
+
+winter_sd_sens_378 <- sens.slope(winter_standard_dev_all_378$sd_2)
+print(winter_sd_sens_378)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 378 SD Summer}
+summer_standard_dev_all_378_ad <- standard_dev_378_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_378_ad <- summer_standard_dev_all_378_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_378_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_378_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 378 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 378 (corrected)
+
+```{r 378 summer sd mk & ss adjusted}
+summer_sd_mk_378_ad <- mk.test(summer_standard_dev_all_378_ad$sd_2)
+print(summer_sd_mk_378_ad)
+
+summer_sd_sens_378_ad <- sens.slope(summer_standard_dev_all_378_ad$sd_2)
+print(summer_sd_sens_378_ad)
+
+```
+
+Winter
+```{r 378 SD winter}
+winter_standard_dev_all_378_ad <- standard_dev_378_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_378_ad <- winter_standard_dev_all_378_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_378_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_378_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 378 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 378 (corrected)
+
+```{r 378 winter sd mk & ss adjusted}
+winter_sd_mk_378_ad <- mk.test(winter_standard_dev_all_378_ad$sd_2)
+print(winter_sd_mk_378_ad)
+
+winter_sd_sens_378_ad <- sens.slope(winter_standard_dev_all_378_ad$sd_2)
+print(winter_sd_sens_378_ad)
+
+```
+
+
+
 
 # Columbine 408 
 *Morrisey* 7/22/2005
@@ -740,6 +917,177 @@ print(sd_sens_408_ad)
 
 ```
 
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 408 SD summer NOT CORRECTED}
+summer_standard_dev_all_408 <- standard_dev_408 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_408 <- summer_standard_dev_all_408 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_408 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_408, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 408 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 408 (non-corrected)
+
+```{r 408 sd summer mk & ss non corrected}
+
+summer_sd_mk_408 <- mk.test(summer_standard_dev_all_408$sd_2)
+print(summer_sd_mk_408)
+
+summer_sd_sens_408 <- sens.slope(summer_standard_dev_all_408$sd_2)
+print(summer_sd_sens_408)
+
+```
+
+Winter
+```{r 408 SD winter NOT CORRECTED}
+winter_standard_dev_all_408 <- standard_dev_408 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_408 <- winter_standard_dev_all_408 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_408 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_408, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 408 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 408 (non-corrected)
+
+```{r 408 sd winter mk & ss non corrected}
+
+winter_sd_mk_408 <- mk.test(winter_standard_dev_all_408$sd_2)
+print(winter_sd_mk_408)
+
+winter_sd_sens_408 <- sens.slope(winter_standard_dev_all_408$sd_2)
+print(winter_sd_sens_408)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 408 SD Summer}
+summer_standard_dev_all_408_ad <- standard_dev_408_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_408_ad <- summer_standard_dev_all_408_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_408_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_408_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 408 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 408 (corrected)
+
+```{r 408 summer sd mk & ss adjusted}
+summer_sd_mk_408_ad <- mk.test(summer_standard_dev_all_408_ad$sd_2)
+print(summer_sd_mk_408_ad)
+
+summer_sd_sens_408_ad <- sens.slope(summer_standard_dev_all_408_ad$sd_2)
+print(summer_sd_sens_408_ad)
+
+```
+
+Winter
+```{r 408 SD winter}
+winter_standard_dev_all_408_ad <- standard_dev_408_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_408_ad <- winter_standard_dev_all_408_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_408_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_408_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 408 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 408 (corrected)
+
+```{r 408 winter sd mk & ss adjusted}
+winter_sd_mk_408_ad <- mk.test(winter_standard_dev_all_408_ad$sd_2)
+print(winter_sd_mk_408_ad)
+
+winter_sd_sens_408_ad <- sens.slope(winter_standard_dev_all_408_ad$sd_2)
+print(winter_sd_sens_408_ad)
+
+```
+
+
 # Columbine Pass	409 
 *Morrisey* 6/23/2005
 
@@ -1050,6 +1398,178 @@ print(sd_sens_409_ad)
 
 ```
 
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 409 SD summer NOT CORRECTED}
+summer_standard_dev_all_409 <- standard_dev_409 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_409 <- summer_standard_dev_all_409 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_409 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_409, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 409 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 409 (non-corrected)
+
+```{r 409 sd summer mk & ss non corrected}
+
+summer_sd_mk_409 <- mk.test(summer_standard_dev_all_409$sd_2)
+print(summer_sd_mk_409)
+
+summer_sd_sens_409 <- sens.slope(summer_standard_dev_all_409$sd_2)
+print(summer_sd_sens_409)
+
+```
+
+Winter
+```{r 409 SD winter NOT CORRECTED}
+winter_standard_dev_all_409 <- standard_dev_409 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_409 <- winter_standard_dev_all_409 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_409 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_409, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 409 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 409 (non-corrected)
+
+```{r 409 sd winter mk & ss non corrected}
+
+winter_sd_mk_409 <- mk.test(winter_standard_dev_all_409$sd_2)
+print(winter_sd_mk_409)
+
+winter_sd_sens_409 <- sens.slope(winter_standard_dev_all_409$sd_2)
+print(winter_sd_sens_409)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 409 SD Summer}
+summer_standard_dev_all_409_ad <- standard_dev_409_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_409_ad <- summer_standard_dev_all_409_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_409_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_409_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 409 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 409 (corrected)
+
+```{r 409 summer sd mk & ss adjusted}
+summer_sd_mk_409_ad <- mk.test(summer_standard_dev_all_409_ad$sd_2)
+print(summer_sd_mk_409_ad)
+
+summer_sd_sens_409_ad <- sens.slope(summer_standard_dev_all_409_ad$sd_2)
+print(summer_sd_sens_409_ad)
+
+```
+
+Winter
+```{r 409 SD winter}
+winter_standard_dev_all_409_ad <- standard_dev_409_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_409_ad <- winter_standard_dev_all_409_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_409_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_409_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 409 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 409 (corrected)
+
+```{r 409 winter sd mk & ss adjusted}
+winter_sd_mk_409_ad <- mk.test(winter_standard_dev_all_409_ad$sd_2)
+print(winter_sd_mk_409_ad)
+
+winter_sd_sens_409_ad <- sens.slope(winter_standard_dev_all_409_ad$sd_2)
+print(winter_sd_sens_409_ad)
+
+```
+
+
 # Crosho	426 
 *Morrisey* 7/21/2005
 
@@ -1358,6 +1878,177 @@ print(sd_mk_426_ad)
 
 sd_sens_426_ad <- sens.slope(standard_dev_all_426_ad$sd_2)
 print(sd_sens_426_ad)
+
+```
+
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 426 SD summer NOT CORRECTED}
+summer_standard_dev_all_426 <- standard_dev_426 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_426 <- summer_standard_dev_all_426 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_426 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_426, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 426 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 426 (non-corrected)
+
+```{r 426 sd summer mk & ss non corrected}
+
+summer_sd_mk_426 <- mk.test(summer_standard_dev_all_426$sd_2)
+print(summer_sd_mk_426)
+
+summer_sd_sens_426 <- sens.slope(summer_standard_dev_all_426$sd_2)
+print(summer_sd_sens_426)
+
+```
+
+Winter
+```{r 426 SD winter NOT CORRECTED}
+winter_standard_dev_all_426 <- standard_dev_426 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_426 <- winter_standard_dev_all_426 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_426 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_426, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 426 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 426 (non-corrected)
+
+```{r 426 sd winter mk & ss non corrected}
+
+winter_sd_mk_426 <- mk.test(winter_standard_dev_all_426$sd_2)
+print(winter_sd_mk_426)
+
+winter_sd_sens_426 <- sens.slope(winter_standard_dev_all_426$sd_2)
+print(winter_sd_sens_426)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 426 SD Summer}
+summer_standard_dev_all_426_ad <- standard_dev_426_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_426_ad <- summer_standard_dev_all_426_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_426_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_426_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 426 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 426 (corrected)
+
+```{r 426 summer sd mk & ss adjusted}
+summer_sd_mk_426_ad <- mk.test(summer_standard_dev_all_426_ad$sd_2)
+print(summer_sd_mk_426_ad)
+
+summer_sd_sens_426_ad <- sens.slope(summer_standard_dev_all_426_ad$sd_2)
+print(summer_sd_sens_426_ad)
+
+```
+
+Winter
+```{r 426 SD winter}
+winter_standard_dev_all_426_ad <- standard_dev_426_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_426_ad <- winter_standard_dev_all_426_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_426_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_426_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 426 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 426 (corrected)
+
+```{r 426 winter sd mk & ss adjusted}
+winter_sd_mk_426_ad <- mk.test(winter_standard_dev_all_426_ad$sd_2)
+print(winter_sd_mk_426_ad)
+
+winter_sd_sens_426_ad <- sens.slope(winter_standard_dev_all_426_ad$sd_2)
+print(winter_sd_sens_426_ad)
 
 ```
 
@@ -1673,6 +2364,178 @@ print(sd_sens_457_ad)
 
 ```
 
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 457 SD summer NOT CORRECTED}
+summer_standard_dev_all_457 <- standard_dev_457 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_457 <- summer_standard_dev_all_457 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_457 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_457, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 457 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 457 (non-corrected)
+
+```{r 457 sd summer mk & ss non corrected}
+
+summer_sd_mk_457 <- mk.test(summer_standard_dev_all_457$sd_2)
+print(summer_sd_mk_457)
+
+summer_sd_sens_457 <- sens.slope(summer_standard_dev_all_457$sd_2)
+print(summer_sd_sens_457)
+
+```
+
+Winter
+```{r 457 SD winter NOT CORRECTED}
+winter_standard_dev_all_457 <- standard_dev_457 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_457 <- winter_standard_dev_all_457 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_457 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_457, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 457 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 457 (non-corrected)
+
+```{r 457 sd winter mk & ss non corrected}
+
+winter_sd_mk_457 <- mk.test(winter_standard_dev_all_457$sd_2)
+print(winter_sd_mk_457)
+
+winter_sd_sens_457 <- sens.slope(winter_standard_dev_all_457$sd_2)
+print(winter_sd_sens_457)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 457 SD Summer}
+summer_standard_dev_all_457_ad <- standard_dev_457_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_457_ad <- summer_standard_dev_all_457_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_457_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_457_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 457 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 457 (corrected)
+
+```{r 457 summer sd mk & ss adjusted}
+summer_sd_mk_457_ad <- mk.test(summer_standard_dev_all_457_ad$sd_2)
+print(summer_sd_mk_457_ad)
+
+summer_sd_sens_457_ad <- sens.slope(summer_standard_dev_all_457_ad$sd_2)
+print(summer_sd_sens_457_ad)
+
+```
+
+Winter
+```{r 457 SD winter}
+winter_standard_dev_all_457_ad <- standard_dev_457_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_457_ad <- winter_standard_dev_all_457_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_457_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_457_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 457 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 457 (corrected)
+
+```{r 457 winter sd mk & ss adjusted}
+winter_sd_mk_457_ad <- mk.test(winter_standard_dev_all_457_ad$sd_2)
+print(winter_sd_mk_457_ad)
+
+winter_sd_sens_457_ad <- sens.slope(winter_standard_dev_all_457_ad$sd_2)
+print(winter_sd_sens_457_ad)
+
+```
+
+
 # Elk River	467 
 *Oyler -> Morrisey* 8/7/2006
 
@@ -1983,6 +2846,178 @@ sd_sens_467_ad <- sens.slope(standard_dev_all_467_ad$sd_2)
 print(sd_sens_467_ad)
 
 ```
+
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 467 SD summer NOT CORRECTED}
+summer_standard_dev_all_467 <- standard_dev_467 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_467 <- summer_standard_dev_all_467 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_467 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_467, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 467 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 467 (non-corrected)
+
+```{r 467 sd summer mk & ss non corrected}
+
+summer_sd_mk_467 <- mk.test(summer_standard_dev_all_467$sd_2)
+print(summer_sd_mk_467)
+
+summer_sd_sens_467 <- sens.slope(summer_standard_dev_all_467$sd_2)
+print(summer_sd_sens_467)
+
+```
+
+Winter
+```{r 467 SD winter NOT CORRECTED}
+winter_standard_dev_all_467 <- standard_dev_467 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_467 <- winter_standard_dev_all_467 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_467 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_467, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 467 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 467 (non-corrected)
+
+```{r 467 sd winter mk & ss non corrected}
+
+winter_sd_mk_467 <- mk.test(winter_standard_dev_all_467$sd_2)
+print(winter_sd_mk_467)
+
+winter_sd_sens_467 <- sens.slope(winter_standard_dev_all_467$sd_2)
+print(winter_sd_sens_467)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 467 SD Summer}
+summer_standard_dev_all_467_ad <- standard_dev_467_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_467_ad <- summer_standard_dev_all_467_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_467_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_467_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 467 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 467 (corrected)
+
+```{r 467 summer sd mk & ss adjusted}
+summer_sd_mk_467_ad <- mk.test(summer_standard_dev_all_467_ad$sd_2)
+print(summer_sd_mk_467_ad)
+
+summer_sd_sens_467_ad <- sens.slope(summer_standard_dev_all_467_ad$sd_2)
+print(summer_sd_sens_467_ad)
+
+```
+
+Winter
+```{r 467 SD winter}
+winter_standard_dev_all_467_ad <- standard_dev_467_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_467_ad <- winter_standard_dev_all_467_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_467_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_467_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 467 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 467 (corrected)
+
+```{r 467 winter sd mk & ss adjusted}
+winter_sd_mk_467_ad <- mk.test(winter_standard_dev_all_467_ad$sd_2)
+print(winter_sd_mk_467_ad)
+
+winter_sd_sens_467_ad <- sens.slope(winter_standard_dev_all_467_ad$sd_2)
+print(winter_sd_sens_467_ad)
+
+```
+
 
 # Lynx Pass	607 
 *Morrisey* 5/22/2006
@@ -2296,6 +3331,178 @@ print(sd_sens_607_ad)
 
 ```
 
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 607 SD summer NOT CORRECTED}
+summer_standard_dev_all_607 <- standard_dev_607 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_607 <- summer_standard_dev_all_607 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_607 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_607, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 607 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 607 (non-corrected)
+
+```{r 607 sd summer mk & ss non corrected}
+
+summer_sd_mk_607 <- mk.test(summer_standard_dev_all_607$sd_2)
+print(summer_sd_mk_607)
+
+summer_sd_sens_607 <- sens.slope(summer_standard_dev_all_607$sd_2)
+print(summer_sd_sens_607)
+
+```
+
+Winter
+```{r 607 SD winter NOT CORRECTED}
+winter_standard_dev_all_607 <- standard_dev_607 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_607 <- winter_standard_dev_all_607 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_607 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_607, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 607 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 607 (non-corrected)
+
+```{r 607 sd winter mk & ss non corrected}
+
+winter_sd_mk_607 <- mk.test(winter_standard_dev_all_607$sd_2)
+print(winter_sd_mk_607)
+
+winter_sd_sens_607 <- sens.slope(winter_standard_dev_all_607$sd_2)
+print(winter_sd_sens_607)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 607 SD Summer}
+summer_standard_dev_all_607_ad <- standard_dev_607_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_607_ad <- summer_standard_dev_all_607_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_607_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_607_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 607 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 607 (corrected)
+
+```{r 607 summer sd mk & ss adjusted}
+summer_sd_mk_607_ad <- mk.test(summer_standard_dev_all_607_ad$sd_2)
+print(summer_sd_mk_607_ad)
+
+summer_sd_sens_607_ad <- sens.slope(summer_standard_dev_all_607_ad$sd_2)
+print(summer_sd_sens_607_ad)
+
+```
+
+Winter
+```{r 607 SD winter}
+winter_standard_dev_all_607_ad <- standard_dev_607_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_607_ad <- winter_standard_dev_all_607_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_607_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_607_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 607 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 607 (corrected)
+
+```{r 607 winter sd mk & ss adjusted}
+winter_sd_mk_607_ad <- mk.test(winter_standard_dev_all_607_ad$sd_2)
+print(winter_sd_mk_607_ad)
+
+winter_sd_sens_607_ad <- sens.slope(winter_standard_dev_all_607_ad$sd_2)
+print(winter_sd_sens_607_ad)
+
+```
+
+
 # Rabbit Ears	709 
 *Morrisey* 8/7/2006
 
@@ -2606,6 +3813,178 @@ sd_sens_709_ad <- sens.slope(standard_dev_all_709_ad$sd_2)
 print(sd_sens_709_ad)
 
 ```
+
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 709 SD summer NOT CORRECTED}
+summer_standard_dev_all_709 <- standard_dev_709 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_709 <- summer_standard_dev_all_709 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_709 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_709, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 709 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 709 (non-corrected)
+
+```{r 709 sd summer mk & ss non corrected}
+
+summer_sd_mk_709 <- mk.test(summer_standard_dev_all_709$sd_2)
+print(summer_sd_mk_709)
+
+summer_sd_sens_709 <- sens.slope(summer_standard_dev_all_709$sd_2)
+print(summer_sd_sens_709)
+
+```
+
+Winter
+```{r 709 SD winter NOT CORRECTED}
+winter_standard_dev_all_709 <- standard_dev_709 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_709 <- winter_standard_dev_all_709 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_709 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_709, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 709 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 709 (non-corrected)
+
+```{r 709 sd winter mk & ss non corrected}
+
+winter_sd_mk_709 <- mk.test(winter_standard_dev_all_709$sd_2)
+print(winter_sd_mk_709)
+
+winter_sd_sens_709 <- sens.slope(winter_standard_dev_all_709$sd_2)
+print(winter_sd_sens_709)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 709 SD Summer}
+summer_standard_dev_all_709_ad <- standard_dev_709_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_709_ad <- summer_standard_dev_all_709_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_709_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_709_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 709 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 709 (corrected)
+
+```{r 709 summer sd mk & ss adjusted}
+summer_sd_mk_709_ad <- mk.test(summer_standard_dev_all_709_ad$sd_2)
+print(summer_sd_mk_709_ad)
+
+summer_sd_sens_709_ad <- sens.slope(summer_standard_dev_all_709_ad$sd_2)
+print(summer_sd_sens_709_ad)
+
+```
+
+Winter
+```{r 709 SD winter}
+winter_standard_dev_all_709_ad <- standard_dev_709_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_709_ad <- winter_standard_dev_all_709_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_709_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_709_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 709 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 709 (corrected)
+
+```{r 709 winter sd mk & ss adjusted}
+winter_sd_mk_709_ad <- mk.test(winter_standard_dev_all_709_ad$sd_2)
+print(winter_sd_mk_709_ad)
+
+winter_sd_sens_709_ad <- sens.slope(winter_standard_dev_all_709_ad$sd_2)
+print(winter_sd_sens_709_ad)
+
+```
+
 
 # Ripple Creek	717 
 *Oyler -> Morrisey* 8/7/2006
@@ -2918,6 +4297,179 @@ sd_sens_717_ad <- sens.slope(standard_dev_all_717_ad$sd_2)
 print(sd_sens_717_ad)
 
 ```
+
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 717 SD summer NOT CORRECTED}
+summer_standard_dev_all_717 <- standard_dev_717 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_717 <- summer_standard_dev_all_717 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_717 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_717, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 717 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 717 (non-corrected)
+
+```{r 717 sd summer mk & ss non corrected}
+
+summer_sd_mk_717 <- mk.test(summer_standard_dev_all_717$sd_2)
+print(summer_sd_mk_717)
+
+summer_sd_sens_717 <- sens.slope(summer_standard_dev_all_717$sd_2)
+print(summer_sd_sens_717)
+
+```
+
+Winter
+```{r 717 SD winter NOT CORRECTED}
+winter_standard_dev_all_717 <- standard_dev_717 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_717 <- winter_standard_dev_all_717 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_717 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_717, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 717 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 717 (non-corrected)
+
+```{r 717 sd winter mk & ss non corrected}
+
+winter_sd_mk_717 <- mk.test(winter_standard_dev_all_717$sd_2)
+print(winter_sd_mk_717)
+
+winter_sd_sens_717 <- sens.slope(winter_standard_dev_all_717$sd_2)
+print(winter_sd_sens_717)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 717 SD Summer}
+summer_standard_dev_all_717_ad <- standard_dev_717_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_717_ad <- summer_standard_dev_all_717_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_717_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_717_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 717 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 717 (corrected)
+
+```{r 717 summer sd mk & ss adjusted}
+summer_sd_mk_717_ad <- mk.test(summer_standard_dev_all_717_ad$sd_2)
+print(summer_sd_mk_717_ad)
+
+summer_sd_sens_717_ad <- sens.slope(summer_standard_dev_all_717_ad$sd_2)
+print(summer_sd_sens_717_ad)
+
+```
+
+Winter
+```{r 717 SD winter}
+winter_standard_dev_all_717_ad <- standard_dev_717_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_717_ad <- winter_standard_dev_all_717_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_717_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_717_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 717 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 717 (corrected)
+
+```{r 717 winter sd mk & ss adjusted}
+winter_sd_mk_717_ad <- mk.test(winter_standard_dev_all_717_ad$sd_2)
+print(winter_sd_mk_717_ad)
+
+winter_sd_sens_717_ad <- sens.slope(winter_standard_dev_all_717_ad$sd_2)
+print(winter_sd_sens_717_ad)
+
+```
+
+
 
 # Tower	825 
 *Original* 8/18/2004
@@ -3232,6 +4784,178 @@ print(sd_sens_825_ad)
 ```
 
 Trapper Lake	827 *Original* 12/13/2004
+
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 825 SD summer NOT CORRECTED}
+summer_standard_dev_all_825 <- standard_dev_825 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_825 <- summer_standard_dev_all_825 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_825 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_825, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 825 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 825 (non-corrected)
+
+```{r 825 sd summer mk & ss non corrected}
+
+summer_sd_mk_825 <- mk.test(summer_standard_dev_all_825$sd_2)
+print(summer_sd_mk_825)
+
+summer_sd_sens_825 <- sens.slope(summer_standard_dev_all_825$sd_2)
+print(summer_sd_sens_825)
+
+```
+
+Winter
+```{r 825 SD winter NOT CORRECTED}
+winter_standard_dev_all_825 <- standard_dev_825 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_825 <- winter_standard_dev_all_825 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_825 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_825, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 825 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 825 (non-corrected)
+
+```{r 825 sd winter mk & ss non corrected}
+
+winter_sd_mk_825 <- mk.test(winter_standard_dev_all_825$sd_2)
+print(winter_sd_mk_825)
+
+winter_sd_sens_825 <- sens.slope(winter_standard_dev_all_825$sd_2)
+print(winter_sd_sens_825)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 825 SD Summer}
+summer_standard_dev_all_825_ad <- standard_dev_825_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_825_ad <- summer_standard_dev_all_825_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_825_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_825_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 825 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 825 (corrected)
+
+```{r 825 summer sd mk & ss adjusted}
+summer_sd_mk_825_ad <- mk.test(summer_standard_dev_all_825_ad$sd_2)
+print(summer_sd_mk_825_ad)
+
+summer_sd_sens_825_ad <- sens.slope(summer_standard_dev_all_825_ad$sd_2)
+print(summer_sd_sens_825_ad)
+
+```
+
+Winter
+```{r 825 SD winter}
+winter_standard_dev_all_825_ad <- standard_dev_825_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_825_ad <- winter_standard_dev_all_825_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_825_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_825_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 825 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 825 (corrected)
+
+```{r 825 winter sd mk & ss adjusted}
+winter_sd_mk_825_ad <- mk.test(winter_standard_dev_all_825_ad$sd_2)
+print(winter_sd_mk_825_ad)
+
+winter_sd_sens_825_ad <- sens.slope(winter_standard_dev_all_825_ad$sd_2)
+print(winter_sd_sens_825_ad)
+
+```
+
 
 # Trapper Lake	827 
 *Original* 12/13/2004
@@ -3548,3 +5272,173 @@ print(sd_sens_827_ad)
 
 
 **Note: figure captions are incorrect.**
+
+### Summer and Winter SD NOT-CORRECTED
+
+#### Summer
+```{r 827 SD summer NOT CORRECTED}
+summer_standard_dev_all_827 <- standard_dev_827 %>%
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+summer_standard_dev_all_827 <- summer_standard_dev_all_827 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+summer_standard_dev_all_827 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(summer_standard_dev_all_827, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 827 average summer temperatures for water years 2005-2021* 
+
+
+#### summer MK & SS for 827 (non-corrected)
+
+```{r 827 sd summer mk & ss non corrected}
+
+summer_sd_mk_827 <- mk.test(summer_standard_dev_all_827$sd_2)
+print(summer_sd_mk_827)
+
+summer_sd_sens_827 <- sens.slope(summer_standard_dev_all_827$sd_2)
+print(summer_sd_sens_827)
+
+```
+
+Winter
+```{r 827 SD winter NOT CORRECTED}
+winter_standard_dev_all_827 <- standard_dev_827 %>%
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+winter_standard_dev_all_827 <- winter_standard_dev_all_827 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+winter_standard_dev_all_827 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(winter_standard_dev_all_827, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 827 average winter temperatures for water years 2005-2021* 
+
+
+#### winter MK & SS for 827 (non-corrected)
+
+```{r 827 sd winter mk & ss non corrected}
+
+winter_sd_mk_827 <- mk.test(winter_standard_dev_all_827$sd_2)
+print(winter_sd_mk_827)
+
+winter_sd_sens_827 <- sens.slope(winter_standard_dev_all_827$sd_2)
+print(winter_sd_sens_827)
+
+```
+
+
+
+### Summer and Winter SD CORRECTED
+
+Summer
+```{r 827 SD Summer}
+summer_standard_dev_all_827_ad <- standard_dev_827_ad %>% 
+  filter(waterDay >= 244 & waterDay <= 335) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+summer_standard_dev_all_827_ad <- summer_standard_dev_all_827_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+summer_standard_dev_all_827_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(summer_standard_dev_all_827_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 827 average summer temperatures for water years 1986-2021* 
+
+#### summer MK & SS 827 (corrected)
+
+```{r 827 summer sd mk & ss adjusted}
+summer_sd_mk_827_ad <- mk.test(summer_standard_dev_all_827_ad$sd_2)
+print(summer_sd_mk_827_ad)
+
+summer_sd_sens_827_ad <- sens.slope(summer_standard_dev_all_827_ad$sd_2)
+print(summer_sd_sens_827_ad)
+
+```
+
+Winter
+```{r 827 SD winter}
+winter_standard_dev_all_827_ad <- standard_dev_827_ad %>% 
+  filter(waterDay >= 32 & waterDay <= 182) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+winter_standard_dev_all_827_ad <- winter_standard_dev_all_827_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+winter_standard_dev_all_827_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(winter_standard_dev_all_827_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 827 average winter temperatures for water years 1986-2021* 
+
+#### winter MK & SS 827 (corrected)
+
+```{r 827 winter sd mk & ss adjusted}
+winter_sd_mk_827_ad <- mk.test(winter_standard_dev_all_827_ad$sd_2)
+print(winter_sd_mk_827_ad)
+
+winter_sd_sens_827_ad <- sens.slope(winter_standard_dev_all_827_ad$sd_2)
+print(winter_sd_sens_827_ad)
+
+```
