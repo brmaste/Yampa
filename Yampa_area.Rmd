@@ -37,9 +37,13 @@ In R script: T(adjusted) = 5.3x10^(-7)xT(old)^4+3.72x10^(-5)xT(old)^3-2.16x10^(-
 
 **In the Ma et al. spreadsheet, H1 is Morrisey, H2 is Oiler**
 
-# 01/3 update
+# 3/01 update
 
-Analyzing by season for each station's timeseries, using the shifted mean of the time series, then sigmoidal detrending. Standard deviation is taken with the relevant days of the water year. 
+Analyzing by summer and winter seasons for each station's timeseries, using the shifted mean of the time series, then sigmoidal detrending. Standard deviation is taken with the relevant days of the water year. 
+
+# 3/06 update
+
+Analyzing for spring and fall.... 
 
 ```{r libraries, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -605,6 +609,182 @@ print(winter_sd_sens_378_ad)
 
 
 
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 378 SD spring NOT CORRECTED}
+spring_standard_dev_all_378 <- standard_dev_378 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_378 <- spring_standard_dev_all_378 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_378 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_378, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 378 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 378 (non-corrected)
+
+```{r 378 sd spring mk & ss non corrected}
+
+spring_sd_mk_378 <- mk.test(spring_standard_dev_all_378$sd_2)
+print(spring_sd_mk_378)
+
+spring_sd_sens_378 <- sens.slope(spring_standard_dev_all_378$sd_2)
+print(spring_sd_sens_378)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 378 SD fall NOT CORRECTED}
+fall_standard_dev_all_378 <- standard_dev_378 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_378 <- fall_standard_dev_all_378 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_378 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_378, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 378 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 378 (non-corrected)
+
+```{r 378 sd fall mk & ss non corrected}
+
+fall_sd_mk_378 <- mk.test(fall_standard_dev_all_378$sd_2)
+print(fall_sd_mk_378)
+
+fall_sd_sens_378 <- sens.slope(fall_standard_dev_all_378$sd_2)
+print(fall_sd_sens_378)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 378 SD Spring}
+spring_standard_dev_all_378_ad <- standard_dev_378_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_378_ad <- spring_standard_dev_all_378_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_378_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_378_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 378 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 378 (corrected)
+
+```{r 378 spring sd mk & ss adjusted}
+spring_sd_mk_378_ad <- mk.test(spring_standard_dev_all_378_ad$sd_2)
+print(spring_sd_mk_378_ad)
+
+spring_sd_sens_378_ad <- sens.slope(spring_standard_dev_all_378_ad$sd_2)
+print(spring_sd_sens_378_ad)
+
+```
+
+Fall
+```{r 378 SD fall}
+fall_standard_dev_all_378_ad <- standard_dev_378_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_378_ad <- fall_standard_dev_all_378_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_378_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_378_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 378 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 378 (corrected)
+
+```{r 378 fall sd mk & ss adjusted}
+fall_sd_mk_378_ad <- mk.test(fall_standard_dev_all_378_ad$sd_2)
+print(fall_sd_mk_378_ad)
+
+fall_sd_sens_378_ad <- sens.slope(fall_standard_dev_all_378_ad$sd_2)
+print(fall_sd_sens_378_ad)
+
+```
+
+
+
 # Columbine 408 
 *Morrisey* 7/22/2005
 
@@ -1086,6 +1266,182 @@ winter_sd_sens_408_ad <- sens.slope(winter_standard_dev_all_408_ad$sd_2)
 print(winter_sd_sens_408_ad)
 
 ```
+
+
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 408 SD spring NOT CORRECTED}
+spring_standard_dev_all_408 <- standard_dev_408 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_408 <- spring_standard_dev_all_408 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_408 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_408, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 408 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 408 (non-corrected)
+
+```{r 408 sd spring mk & ss non corrected}
+
+spring_sd_mk_408 <- mk.test(spring_standard_dev_all_408$sd_2)
+print(spring_sd_mk_408)
+
+spring_sd_sens_408 <- sens.slope(spring_standard_dev_all_408$sd_2)
+print(spring_sd_sens_408)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 408 SD fall NOT CORRECTED}
+fall_standard_dev_all_408 <- standard_dev_408 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_408 <- fall_standard_dev_all_408 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_408 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_408, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 408 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 408 (non-corrected)
+
+```{r 408 sd fall mk & ss non corrected}
+
+fall_sd_mk_408 <- mk.test(fall_standard_dev_all_408$sd_2)
+print(fall_sd_mk_408)
+
+fall_sd_sens_408 <- sens.slope(fall_standard_dev_all_408$sd_2)
+print(fall_sd_sens_408)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 408 SD Spring}
+spring_standard_dev_all_408_ad <- standard_dev_408_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_408_ad <- spring_standard_dev_all_408_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_408_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_408_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 408 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 408 (corrected)
+
+```{r 408 spring sd mk & ss adjusted}
+spring_sd_mk_408_ad <- mk.test(spring_standard_dev_all_408_ad$sd_2)
+print(spring_sd_mk_408_ad)
+
+spring_sd_sens_408_ad <- sens.slope(spring_standard_dev_all_408_ad$sd_2)
+print(spring_sd_sens_408_ad)
+
+```
+
+Fall
+```{r 408 SD fall}
+fall_standard_dev_all_408_ad <- standard_dev_408_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_408_ad <- fall_standard_dev_all_408_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_408_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_408_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 408 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 408 (corrected)
+
+```{r 408 fall sd mk & ss adjusted}
+fall_sd_mk_408_ad <- mk.test(fall_standard_dev_all_408_ad$sd_2)
+print(fall_sd_mk_408_ad)
+
+fall_sd_sens_408_ad <- sens.slope(fall_standard_dev_all_408_ad$sd_2)
+print(fall_sd_sens_408_ad)
+
+```
+
 
 
 # Columbine Pass	409 
@@ -1570,6 +1926,182 @@ print(winter_sd_sens_409_ad)
 ```
 
 
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 409 SD spring NOT CORRECTED}
+spring_standard_dev_all_409 <- standard_dev_409 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_409 <- spring_standard_dev_all_409 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_409 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_409, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 409 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 409 (non-corrected)
+
+```{r 409 sd spring mk & ss non corrected}
+
+spring_sd_mk_409 <- mk.test(spring_standard_dev_all_409$sd_2)
+print(spring_sd_mk_409)
+
+spring_sd_sens_409 <- sens.slope(spring_standard_dev_all_409$sd_2)
+print(spring_sd_sens_409)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 409 SD fall NOT CORRECTED}
+fall_standard_dev_all_409 <- standard_dev_409 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_409 <- fall_standard_dev_all_409 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_409 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_409, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 409 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 409 (non-corrected)
+
+```{r 409 sd fall mk & ss non corrected}
+
+fall_sd_mk_409 <- mk.test(fall_standard_dev_all_409$sd_2)
+print(fall_sd_mk_409)
+
+fall_sd_sens_409 <- sens.slope(fall_standard_dev_all_409$sd_2)
+print(fall_sd_sens_409)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 409 SD Spring}
+spring_standard_dev_all_409_ad <- standard_dev_409_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_409_ad <- spring_standard_dev_all_409_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_409_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_409_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 409 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 409 (corrected)
+
+```{r 409 spring sd mk & ss adjusted}
+spring_sd_mk_409_ad <- mk.test(spring_standard_dev_all_409_ad$sd_2)
+print(spring_sd_mk_409_ad)
+
+spring_sd_sens_409_ad <- sens.slope(spring_standard_dev_all_409_ad$sd_2)
+print(spring_sd_sens_409_ad)
+
+```
+
+Fall
+```{r 409 SD fall}
+fall_standard_dev_all_409_ad <- standard_dev_409_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_409_ad <- fall_standard_dev_all_409_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_409_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_409_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 409 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 409 (corrected)
+
+```{r 409 fall sd mk & ss adjusted}
+fall_sd_mk_409_ad <- mk.test(fall_standard_dev_all_409_ad$sd_2)
+print(fall_sd_mk_409_ad)
+
+fall_sd_sens_409_ad <- sens.slope(fall_standard_dev_all_409_ad$sd_2)
+print(fall_sd_sens_409_ad)
+
+```
+
+
+
 # Crosho	426 
 *Morrisey* 7/21/2005
 
@@ -2051,6 +2583,182 @@ winter_sd_sens_426_ad <- sens.slope(winter_standard_dev_all_426_ad$sd_2)
 print(winter_sd_sens_426_ad)
 
 ```
+
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 426 SD spring NOT CORRECTED}
+spring_standard_dev_all_426 <- standard_dev_426 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_426 <- spring_standard_dev_all_426 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_426 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_426, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 426 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 426 (non-corrected)
+
+```{r 426 sd spring mk & ss non corrected}
+
+spring_sd_mk_426 <- mk.test(spring_standard_dev_all_426$sd_2)
+print(spring_sd_mk_426)
+
+spring_sd_sens_426 <- sens.slope(spring_standard_dev_all_426$sd_2)
+print(spring_sd_sens_426)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 426 SD fall NOT CORRECTED}
+fall_standard_dev_all_426 <- standard_dev_426 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_426 <- fall_standard_dev_all_426 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_426 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_426, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 426 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 426 (non-corrected)
+
+```{r 426 sd fall mk & ss non corrected}
+
+fall_sd_mk_426 <- mk.test(fall_standard_dev_all_426$sd_2)
+print(fall_sd_mk_426)
+
+fall_sd_sens_426 <- sens.slope(fall_standard_dev_all_426$sd_2)
+print(fall_sd_sens_426)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 426 SD Spring}
+spring_standard_dev_all_426_ad <- standard_dev_426_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_426_ad <- spring_standard_dev_all_426_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_426_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_426_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 426 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 426 (corrected)
+
+```{r 426 spring sd mk & ss adjusted}
+spring_sd_mk_426_ad <- mk.test(spring_standard_dev_all_426_ad$sd_2)
+print(spring_sd_mk_426_ad)
+
+spring_sd_sens_426_ad <- sens.slope(spring_standard_dev_all_426_ad$sd_2)
+print(spring_sd_sens_426_ad)
+
+```
+
+Fall
+```{r 426 SD fall}
+fall_standard_dev_all_426_ad <- standard_dev_426_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_426_ad <- fall_standard_dev_all_426_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_426_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_426_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 426 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 426 (corrected)
+
+```{r 426 fall sd mk & ss adjusted}
+fall_sd_mk_426_ad <- mk.test(fall_standard_dev_all_426_ad$sd_2)
+print(fall_sd_mk_426_ad)
+
+fall_sd_sens_426_ad <- sens.slope(fall_standard_dev_all_426_ad$sd_2)
+print(fall_sd_sens_426_ad)
+
+```
+
+
 
 # Dry Lake	457 
 *Oyler -> Morrisey* 7/30/2003
@@ -2536,6 +3244,182 @@ print(winter_sd_sens_457_ad)
 ```
 
 
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 457 SD spring NOT CORRECTED}
+spring_standard_dev_all_457 <- standard_dev_457 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_457 <- spring_standard_dev_all_457 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_457 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_457, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 457 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 457 (non-corrected)
+
+```{r 457 sd spring mk & ss non corrected}
+
+spring_sd_mk_457 <- mk.test(spring_standard_dev_all_457$sd_2)
+print(spring_sd_mk_457)
+
+spring_sd_sens_457 <- sens.slope(spring_standard_dev_all_457$sd_2)
+print(spring_sd_sens_457)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 457 SD fall NOT CORRECTED}
+fall_standard_dev_all_457 <- standard_dev_457 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_457 <- fall_standard_dev_all_457 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_457 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_457, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 457 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 457 (non-corrected)
+
+```{r 457 sd fall mk & ss non corrected}
+
+fall_sd_mk_457 <- mk.test(fall_standard_dev_all_457$sd_2)
+print(fall_sd_mk_457)
+
+fall_sd_sens_457 <- sens.slope(fall_standard_dev_all_457$sd_2)
+print(fall_sd_sens_457)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 457 SD Spring}
+spring_standard_dev_all_457_ad <- standard_dev_457_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_457_ad <- spring_standard_dev_all_457_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_457_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_457_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 457 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 457 (corrected)
+
+```{r 457 spring sd mk & ss adjusted}
+spring_sd_mk_457_ad <- mk.test(spring_standard_dev_all_457_ad$sd_2)
+print(spring_sd_mk_457_ad)
+
+spring_sd_sens_457_ad <- sens.slope(spring_standard_dev_all_457_ad$sd_2)
+print(spring_sd_sens_457_ad)
+
+```
+
+Fall
+```{r 457 SD fall}
+fall_standard_dev_all_457_ad <- standard_dev_457_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_457_ad <- fall_standard_dev_all_457_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_457_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_457_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 457 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 457 (corrected)
+
+```{r 457 fall sd mk & ss adjusted}
+fall_sd_mk_457_ad <- mk.test(fall_standard_dev_all_457_ad$sd_2)
+print(fall_sd_mk_457_ad)
+
+fall_sd_sens_457_ad <- sens.slope(fall_standard_dev_all_457_ad$sd_2)
+print(fall_sd_sens_457_ad)
+
+```
+
+
+
 # Elk River	467 
 *Oyler -> Morrisey* 8/7/2006
 
@@ -3017,6 +3901,182 @@ winter_sd_sens_467_ad <- sens.slope(winter_standard_dev_all_467_ad$sd_2)
 print(winter_sd_sens_467_ad)
 
 ```
+
+
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 467 SD spring NOT CORRECTED}
+spring_standard_dev_all_467 <- standard_dev_467 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_467 <- spring_standard_dev_all_467 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_467 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_467, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 467 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 467 (non-corrected)
+
+```{r 467 sd spring mk & ss non corrected}
+
+spring_sd_mk_467 <- mk.test(spring_standard_dev_all_467$sd_2)
+print(spring_sd_mk_467)
+
+spring_sd_sens_467 <- sens.slope(spring_standard_dev_all_467$sd_2)
+print(spring_sd_sens_467)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 467 SD fall NOT CORRECTED}
+fall_standard_dev_all_467 <- standard_dev_467 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_467 <- fall_standard_dev_all_467 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_467 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_467, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 467 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 467 (non-corrected)
+
+```{r 467 sd fall mk & ss non corrected}
+
+fall_sd_mk_467 <- mk.test(fall_standard_dev_all_467$sd_2)
+print(fall_sd_mk_467)
+
+fall_sd_sens_467 <- sens.slope(fall_standard_dev_all_467$sd_2)
+print(fall_sd_sens_467)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 467 SD Spring}
+spring_standard_dev_all_467_ad <- standard_dev_467_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_467_ad <- spring_standard_dev_all_467_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_467_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_467_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 467 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 467 (corrected)
+
+```{r 467 spring sd mk & ss adjusted}
+spring_sd_mk_467_ad <- mk.test(spring_standard_dev_all_467_ad$sd_2)
+print(spring_sd_mk_467_ad)
+
+spring_sd_sens_467_ad <- sens.slope(spring_standard_dev_all_467_ad$sd_2)
+print(spring_sd_sens_467_ad)
+
+```
+
+Fall
+```{r 467 SD fall}
+fall_standard_dev_all_467_ad <- standard_dev_467_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_467_ad <- fall_standard_dev_all_467_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_467_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_467_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 467 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 467 (corrected)
+
+```{r 467 fall sd mk & ss adjusted}
+fall_sd_mk_467_ad <- mk.test(fall_standard_dev_all_467_ad$sd_2)
+print(fall_sd_mk_467_ad)
+
+fall_sd_sens_467_ad <- sens.slope(fall_standard_dev_all_467_ad$sd_2)
+print(fall_sd_sens_467_ad)
+
+```
+
 
 
 # Lynx Pass	607 
@@ -3503,6 +4563,182 @@ print(winter_sd_sens_607_ad)
 ```
 
 
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 607 SD spring NOT CORRECTED}
+spring_standard_dev_all_607 <- standard_dev_607 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_607 <- spring_standard_dev_all_607 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_607 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_607, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 607 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 607 (non-corrected)
+
+```{r 607 sd spring mk & ss non corrected}
+
+spring_sd_mk_607 <- mk.test(spring_standard_dev_all_607$sd_2)
+print(spring_sd_mk_607)
+
+spring_sd_sens_607 <- sens.slope(spring_standard_dev_all_607$sd_2)
+print(spring_sd_sens_607)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 607 SD fall NOT CORRECTED}
+fall_standard_dev_all_607 <- standard_dev_607 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_607 <- fall_standard_dev_all_607 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_607 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_607, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 607 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 607 (non-corrected)
+
+```{r 607 sd fall mk & ss non corrected}
+
+fall_sd_mk_607 <- mk.test(fall_standard_dev_all_607$sd_2)
+print(fall_sd_mk_607)
+
+fall_sd_sens_607 <- sens.slope(fall_standard_dev_all_607$sd_2)
+print(fall_sd_sens_607)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 607 SD Spring}
+spring_standard_dev_all_607_ad <- standard_dev_607_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_607_ad <- spring_standard_dev_all_607_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_607_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_607_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 607 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 607 (corrected)
+
+```{r 607 spring sd mk & ss adjusted}
+spring_sd_mk_607_ad <- mk.test(spring_standard_dev_all_607_ad$sd_2)
+print(spring_sd_mk_607_ad)
+
+spring_sd_sens_607_ad <- sens.slope(spring_standard_dev_all_607_ad$sd_2)
+print(spring_sd_sens_607_ad)
+
+```
+
+Fall
+```{r 607 SD fall}
+fall_standard_dev_all_607_ad <- standard_dev_607_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_607_ad <- fall_standard_dev_all_607_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_607_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_607_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 607 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 607 (corrected)
+
+```{r 607 fall sd mk & ss adjusted}
+fall_sd_mk_607_ad <- mk.test(fall_standard_dev_all_607_ad$sd_2)
+print(fall_sd_mk_607_ad)
+
+fall_sd_sens_607_ad <- sens.slope(fall_standard_dev_all_607_ad$sd_2)
+print(fall_sd_sens_607_ad)
+
+```
+
+
+
 # Rabbit Ears	709 
 *Morrisey* 8/7/2006
 
@@ -3986,6 +5222,182 @@ print(winter_sd_sens_709_ad)
 ```
 
 
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 709 SD spring NOT CORRECTED}
+spring_standard_dev_all_709 <- standard_dev_709 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_709 <- spring_standard_dev_all_709 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_709 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_709, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 709 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 709 (non-corrected)
+
+```{r 709 sd spring mk & ss non corrected}
+
+spring_sd_mk_709 <- mk.test(spring_standard_dev_all_709$sd_2)
+print(spring_sd_mk_709)
+
+spring_sd_sens_709 <- sens.slope(spring_standard_dev_all_709$sd_2)
+print(spring_sd_sens_709)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 709 SD fall NOT CORRECTED}
+fall_standard_dev_all_709 <- standard_dev_709 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_709 <- fall_standard_dev_all_709 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_709 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_709, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 709 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 709 (non-corrected)
+
+```{r 709 sd fall mk & ss non corrected}
+
+fall_sd_mk_709 <- mk.test(fall_standard_dev_all_709$sd_2)
+print(fall_sd_mk_709)
+
+fall_sd_sens_709 <- sens.slope(fall_standard_dev_all_709$sd_2)
+print(fall_sd_sens_709)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 709 SD Spring}
+spring_standard_dev_all_709_ad <- standard_dev_709_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_709_ad <- spring_standard_dev_all_709_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_709_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_709_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 709 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 709 (corrected)
+
+```{r 709 spring sd mk & ss adjusted}
+spring_sd_mk_709_ad <- mk.test(spring_standard_dev_all_709_ad$sd_2)
+print(spring_sd_mk_709_ad)
+
+spring_sd_sens_709_ad <- sens.slope(spring_standard_dev_all_709_ad$sd_2)
+print(spring_sd_sens_709_ad)
+
+```
+
+Fall
+```{r 709 SD fall}
+fall_standard_dev_all_709_ad <- standard_dev_709_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_709_ad <- fall_standard_dev_all_709_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_709_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_709_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 709 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 709 (corrected)
+
+```{r 709 fall sd mk & ss adjusted}
+fall_sd_mk_709_ad <- mk.test(fall_standard_dev_all_709_ad$sd_2)
+print(fall_sd_mk_709_ad)
+
+fall_sd_sens_709_ad <- sens.slope(fall_standard_dev_all_709_ad$sd_2)
+print(fall_sd_sens_709_ad)
+
+```
+
+
+
 # Ripple Creek	717 
 *Oyler -> Morrisey* 8/7/2006
 
@@ -4466,6 +5878,181 @@ print(winter_sd_mk_717_ad)
 
 winter_sd_sens_717_ad <- sens.slope(winter_standard_dev_all_717_ad$sd_2)
 print(winter_sd_sens_717_ad)
+
+```
+
+
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 717 SD spring NOT CORRECTED}
+spring_standard_dev_all_717 <- standard_dev_717 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_717 <- spring_standard_dev_all_717 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_717 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_717, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 717 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 717 (non-corrected)
+
+```{r 717 sd spring mk & ss non corrected}
+
+spring_sd_mk_717 <- mk.test(spring_standard_dev_all_717$sd_2)
+print(spring_sd_mk_717)
+
+spring_sd_sens_717 <- sens.slope(spring_standard_dev_all_717$sd_2)
+print(spring_sd_sens_717)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 717 SD fall NOT CORRECTED}
+fall_standard_dev_all_717 <- standard_dev_717 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_717 <- fall_standard_dev_all_717 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_717 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_717, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 717 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 717 (non-corrected)
+
+```{r 717 sd fall mk & ss non corrected}
+
+fall_sd_mk_717 <- mk.test(fall_standard_dev_all_717$sd_2)
+print(fall_sd_mk_717)
+
+fall_sd_sens_717 <- sens.slope(fall_standard_dev_all_717$sd_2)
+print(fall_sd_sens_717)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 717 SD Spring}
+spring_standard_dev_all_717_ad <- standard_dev_717_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_717_ad <- spring_standard_dev_all_717_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_717_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_717_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 717 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 717 (corrected)
+
+```{r 717 spring sd mk & ss adjusted}
+spring_sd_mk_717_ad <- mk.test(spring_standard_dev_all_717_ad$sd_2)
+print(spring_sd_mk_717_ad)
+
+spring_sd_sens_717_ad <- sens.slope(spring_standard_dev_all_717_ad$sd_2)
+print(spring_sd_sens_717_ad)
+
+```
+
+Fall
+```{r 717 SD fall}
+fall_standard_dev_all_717_ad <- standard_dev_717_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_717_ad <- fall_standard_dev_all_717_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_717_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_717_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 717 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 717 (corrected)
+
+```{r 717 fall sd mk & ss adjusted}
+fall_sd_mk_717_ad <- mk.test(fall_standard_dev_all_717_ad$sd_2)
+print(fall_sd_mk_717_ad)
+
+fall_sd_sens_717_ad <- sens.slope(fall_standard_dev_all_717_ad$sd_2)
+print(fall_sd_sens_717_ad)
 
 ```
 
@@ -4957,6 +6544,182 @@ print(winter_sd_sens_825_ad)
 ```
 
 
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 825 SD spring NOT CORRECTED}
+spring_standard_dev_all_825 <- standard_dev_825 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_825 <- spring_standard_dev_all_825 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_825 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_825, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 825 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 825 (non-corrected)
+
+```{r 825 sd spring mk & ss non corrected}
+
+spring_sd_mk_825 <- mk.test(spring_standard_dev_all_825$sd_2)
+print(spring_sd_mk_825)
+
+spring_sd_sens_825 <- sens.slope(spring_standard_dev_all_825$sd_2)
+print(spring_sd_sens_825)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 825 SD fall NOT CORRECTED}
+fall_standard_dev_all_825 <- standard_dev_825 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_825 <- fall_standard_dev_all_825 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_825 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_825, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 825 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 825 (non-corrected)
+
+```{r 825 sd fall mk & ss non corrected}
+
+fall_sd_mk_825 <- mk.test(fall_standard_dev_all_825$sd_2)
+print(fall_sd_mk_825)
+
+fall_sd_sens_825 <- sens.slope(fall_standard_dev_all_825$sd_2)
+print(fall_sd_sens_825)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 825 SD Spring}
+spring_standard_dev_all_825_ad <- standard_dev_825_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_825_ad <- spring_standard_dev_all_825_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_825_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_825_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 825 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 825 (corrected)
+
+```{r 825 spring sd mk & ss adjusted}
+spring_sd_mk_825_ad <- mk.test(spring_standard_dev_all_825_ad$sd_2)
+print(spring_sd_mk_825_ad)
+
+spring_sd_sens_825_ad <- sens.slope(spring_standard_dev_all_825_ad$sd_2)
+print(spring_sd_sens_825_ad)
+
+```
+
+Fall
+```{r 825 SD fall}
+fall_standard_dev_all_825_ad <- standard_dev_825_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_825_ad <- fall_standard_dev_all_825_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_825_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_825_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 825 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 825 (corrected)
+
+```{r 825 fall sd mk & ss adjusted}
+fall_sd_mk_825_ad <- mk.test(fall_standard_dev_all_825_ad$sd_2)
+print(fall_sd_mk_825_ad)
+
+fall_sd_sens_825_ad <- sens.slope(fall_standard_dev_all_825_ad$sd_2)
+print(fall_sd_sens_825_ad)
+
+```
+
+
+
 # Trapper Lake	827 
 *Original* 12/13/2004
 
@@ -5442,3 +7205,178 @@ winter_sd_sens_827_ad <- sens.slope(winter_standard_dev_all_827_ad$sd_2)
 print(winter_sd_sens_827_ad)
 
 ```
+
+
+### Spring and Fall SD NOT-CORRECTED
+
+#### Spring
+```{r 827 SD spring NOT CORRECTED}
+spring_standard_dev_all_827 <- standard_dev_827 %>%
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+spring_standard_dev_all_827 <- spring_standard_dev_all_827 %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+spring_standard_dev_all_827 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(spring_standard_dev_all_827, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 827 average spring temperatures for water years 2005-2021* 
+
+
+#### spring MK & SS for 827 (non-corrected)
+
+```{r 827 sd spring mk & ss non corrected}
+
+spring_sd_mk_827 <- mk.test(spring_standard_dev_all_827$sd_2)
+print(spring_sd_mk_827)
+
+spring_sd_sens_827 <- sens.slope(spring_standard_dev_all_827$sd_2)
+print(spring_sd_sens_827)
+
+```
+
+Fall
+
+## **Fall is split each water year in the middle of the season. This analysis splits the fall season between the preceeding water year and the subsequent water year.**  
+
+```{r 827 SD fall NOT CORRECTED}
+fall_standard_dev_all_827 <- standard_dev_827 %>%
+  filter(waterDay >= 336 | waterDay <= 31) %>% 
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+
+fall_standard_dev_all_827 <- fall_standard_dev_all_827 %>% 
+  #group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+
+fall_standard_dev_all_827 %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+
+ggplot(fall_standard_dev_all_827, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+
+```
+
+*Non-corrected standard deviation of SNOTEL 827 average fall temperatures for water years 2005-2021. Note that the season is split by the water year.* 
+
+
+#### fall MK & SS for 827 (non-corrected)
+
+```{r 827 sd fall mk & ss non corrected}
+
+fall_sd_mk_827 <- mk.test(fall_standard_dev_all_827$sd_2)
+print(fall_sd_mk_827)
+
+fall_sd_sens_827 <- sens.slope(fall_standard_dev_all_827$sd_2)
+print(fall_sd_sens_827)
+
+```
+
+
+
+### Spring and Fall SD CORRECTED
+
+Spring
+```{r 827 SD Spring}
+spring_standard_dev_all_827_ad <- standard_dev_827_ad %>% 
+  filter(waterDay >= 183 & waterDay <= 243) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+spring_standard_dev_all_827_ad <- spring_standard_dev_all_827_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+spring_standard_dev_all_827_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(spring_standard_dev_all_827_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 827 average spring temperatures for water years 1986-2021* 
+
+#### spring MK & SS 827 (corrected)
+
+```{r 827 spring sd mk & ss adjusted}
+spring_sd_mk_827_ad <- mk.test(spring_standard_dev_all_827_ad$sd_2)
+print(spring_sd_mk_827_ad)
+
+spring_sd_sens_827_ad <- sens.slope(spring_standard_dev_all_827_ad$sd_2)
+print(spring_sd_sens_827_ad)
+
+```
+
+Fall
+```{r 827 SD fall}
+fall_standard_dev_all_827_ad <- standard_dev_827_ad %>% 
+  filter(waterDay >= 336 | waterDay <= 31) %>%
+  group_by(waterYear) %>% 
+  mutate(nmbr = n())
+fall_standard_dev_all_827_ad <- fall_standard_dev_all_827_ad %>% 
+  group_by(waterYear) %>% 
+  mutate(resid_mean = mean(residual)) %>%
+  mutate(sd_1 = residual-resid_mean) %>% 
+  mutate(sd_2 = (((sum((sd_1)^2))/((nmbr-1))))^(0.5)) %>%
+  distinct(sd_2, .keep_all = TRUE) %>% 
+   select(waterYear, sd_2)
+fall_standard_dev_all_827_ad %>% 
+  kable(.,'html') %>%
+  kable_styling() %>%
+  scroll_box(width='250px',height='500px')
+ggplot(fall_standard_dev_all_827_ad, aes(x = waterYear, y = sd_2))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  geom_smooth(method = "lm", se=FALSE) +
+  ylab('SD') + 
+  xlab('Water year')
+```
+
+*Morrisey-corrected standard deviation of SNOTEL 827 average fall temperatures for water years 1986-2021. Note that the fall season is split by the water year.* 
+
+#### fall MK & SS 827 (corrected)
+
+```{r 827 fall sd mk & ss adjusted}
+fall_sd_mk_827_ad <- mk.test(fall_standard_dev_all_827_ad$sd_2)
+print(fall_sd_mk_827_ad)
+
+fall_sd_sens_827_ad <- sens.slope(fall_standard_dev_all_827_ad$sd_2)
+print(fall_sd_sens_827_ad)
+
+```
+
