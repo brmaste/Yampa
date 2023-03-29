@@ -285,7 +285,7 @@ yearly_wy_aver_378 <- snotel_378_adjusted %>%
 
 daily_wy_aver_378 <- yearly_wy_aver_378 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -374,7 +374,7 @@ yearly_wy_aver_378_ad <- snotel_378_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_378_ad <- yearly_wy_aver_378_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_378_ad <- daily_wy_aver_378_ad %>% 
   group_by(daymonth) %>% 
@@ -946,7 +946,7 @@ yearly_wy_aver_408 <- snotel_408_adjusted %>%
 
 daily_wy_aver_408 <- yearly_wy_aver_408 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -979,6 +979,20 @@ standard_dev_408 <- daily_wy_aver_408 %>%
   group_by(waterYear) %>% 
   mutate(residual = (all_ave_temp-aver_ann_temp)+temperature_mean-aver_day_temp) %>% 
   mutate(deviation = abs(residual-lag(residual)))
+
+#detrend check:
+
+detrend_check <- standard_dev_408 %>% 
+  filter(waterYear == 2000)
+
+#Testing:
+
+ggplot(detrend_check, aes(x = waterDay, y = residual))+
+  geom_line(size= 0.7) +
+  theme_few() +
+  ylab('Average Daily temperature (°C)') + 
+  xlab('Day of water year')
+
 
 standard_dev_all_408 <- standard_dev_408 %>% 
   group_by(waterYear) %>% 
@@ -1035,7 +1049,7 @@ yearly_wy_aver_408_ad <- snotel_408_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_408_ad <- yearly_wy_aver_408_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_408_ad <- daily_wy_aver_408_ad %>% 
   group_by(daymonth) %>% 
@@ -1603,7 +1617,7 @@ yearly_wy_aver_409 <- snotel_409_adjusted %>%
 
 daily_wy_aver_409 <- yearly_wy_aver_409 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -1692,7 +1706,7 @@ yearly_wy_aver_409_ad <- snotel_409_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_409_ad <- yearly_wy_aver_409_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_409_ad <- daily_wy_aver_409_ad %>% 
   group_by(daymonth) %>% 
@@ -2262,7 +2276,7 @@ yearly_wy_aver_426 <- snotel_426_adjusted %>%
 
 daily_wy_aver_426 <- yearly_wy_aver_426 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -2351,7 +2365,7 @@ yearly_wy_aver_426_ad <- snotel_426_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_426_ad <- yearly_wy_aver_426_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_426_ad <- daily_wy_aver_426_ad %>% 
   group_by(daymonth) %>% 
@@ -2921,7 +2935,7 @@ yearly_wy_aver_457 <- snotel_457_adjusted %>%
 
 daily_wy_aver_457 <- yearly_wy_aver_457 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -3010,7 +3024,7 @@ yearly_wy_aver_457_ad <- snotel_457_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_457_ad <- yearly_wy_aver_457_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_457_ad <- daily_wy_aver_457_ad %>% 
   group_by(daymonth) %>% 
@@ -3580,7 +3594,7 @@ yearly_wy_aver_467 <- snotel_467_adjusted %>%
 
 daily_wy_aver_467 <- yearly_wy_aver_467 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -3669,7 +3683,7 @@ yearly_wy_aver_467_ad <- snotel_467_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_467_ad <- yearly_wy_aver_467_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_467_ad <- daily_wy_aver_467_ad %>% 
   group_by(daymonth) %>% 
@@ -4240,7 +4254,7 @@ yearly_wy_aver_607 <- snotel_607_adjusted %>%
 
 daily_wy_aver_607 <- yearly_wy_aver_607 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -4329,7 +4343,7 @@ yearly_wy_aver_607_ad <- snotel_607_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_607_ad <- yearly_wy_aver_607_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_607_ad <- daily_wy_aver_607_ad %>% 
   group_by(daymonth) %>% 
@@ -4899,7 +4913,7 @@ yearly_wy_aver_709 <- snotel_709_adjusted %>%
 
 daily_wy_aver_709 <- yearly_wy_aver_709 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -4988,7 +5002,7 @@ yearly_wy_aver_709_ad <- snotel_709_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_709_ad <- yearly_wy_aver_709_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_709_ad <- daily_wy_aver_709_ad %>% 
   group_by(daymonth) %>% 
@@ -5559,7 +5573,7 @@ yearly_wy_aver_717 <- snotel_717_adjusted %>%
 
 daily_wy_aver_717 <- yearly_wy_aver_717 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -5648,7 +5662,7 @@ yearly_wy_aver_717_ad <- snotel_717_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_717_ad <- yearly_wy_aver_717_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_717_ad <- daily_wy_aver_717_ad %>% 
   group_by(daymonth) %>% 
@@ -6219,7 +6233,7 @@ yearly_wy_aver_825 <- snotel_825_adjusted %>%
 
 daily_wy_aver_825 <- yearly_wy_aver_825 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -6308,7 +6322,7 @@ yearly_wy_aver_825_ad <- snotel_825_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_825_ad <- yearly_wy_aver_825_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_825_ad <- daily_wy_aver_825_ad %>% 
   group_by(daymonth) %>% 
@@ -6882,7 +6896,7 @@ yearly_wy_aver_827 <- snotel_827_adjusted %>%
 
 daily_wy_aver_827 <- yearly_wy_aver_827 %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp = mean(aver_ann_temp))
+  mutate(aver_day_temp = mean(temperature_mean))
 
 #average mean temperature by day for the period of record:
 
@@ -6971,7 +6985,7 @@ yearly_wy_aver_827_ad <- snotel_827_adjusted %>%
 #Average temperature by day for all water years:
 daily_wy_aver_827_ad <- yearly_wy_aver_827_ad %>% 
   group_by(daymonth) %>% 
-  mutate(aver_day_temp_ad = mean(aver_ann_temp_ad))
+  mutate(aver_day_temp_ad = mean(temp_ad))
 #average mean temperature by day for the period of record:
 daily_wy_aver_827_ad <- daily_wy_aver_827_ad %>% 
   group_by(daymonth) %>% 
